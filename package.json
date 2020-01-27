@@ -1,6 +1,6 @@
 {
   "name": "titbit-toolkit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "titbit框架的工具集，包括跨域、静态资源处理，权限过滤等大量中间件",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/master-genius/awyjs.git"
+    "url": "git+https://github.com/master-genius/titbit-toolkit.git"
   },
   "keywords": [
     "tit",
