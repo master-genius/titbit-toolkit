@@ -1,50 +1,14 @@
 'use strict';
 
-var middleware = {};
+exports.cookie = require('./middleware/cookie');
 
-function loadMiddleware (midname) {
+exports.session = require('./middleware/session');
 
-    var mid = middleware[midname];
-    if (mid !== undefined) {
-        return middleware[midname];
-    }
+exports.cors = require('./milldeware/cors');
 
-    switch (midname) {
-        case 'cookie':
-            mid = require('./middleware/titbit-cookie');
-            break;
-        case 'session':
-            mid = require('./middleware/titbit-session');
-            break;
-        case 'cors':
-            mid = require('./middleware/titbit-cors');
-            break;
-        default:
-            throw new Error(`Can not found module: ${mdiname}`);       
-    }
-    middleware[midname] = mid;
+//exports.cookie = require('./middleware/cookie');
 
-    return mid;
-}
+//exports.cookie = require('./middleware/cookie');
 
-exports.cookie = function() {
-    return loadMiddleware('cookie');
-};
+//exports.cookie = require('./middleware/cookie');
 
-exports.session = function () {
-    return loadMiddleware('session')().callback;
-};
-
-exports.cors = function () {
-    var mw = loadMiddleware('cors');
-    var mobj = new mw();
-    return mobj;
-};
-
-exports.imgfilter = function () {
-
-};
-
-exports.staticServ = function () {
-
-};
