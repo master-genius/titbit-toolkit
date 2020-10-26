@@ -4,6 +4,9 @@ class cors {
 
   constructor (options = {}) {
     this.allow = [];
+    
+    this.allowHeaders = 'content-type';
+
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS', 'PATCH', 'TRACE', 'HEAD'
     ];
@@ -11,6 +14,8 @@ class cors {
     if (typeof options !== 'object') {
       options = {};
     }
+
+    this.optionsCache = 60;
 
     for (let k in options) {
       switch (k) {
@@ -30,14 +35,21 @@ class cors {
 
           break;
 
+        case 'optionsCache':
+          if (!isNaN(options[k])) {
+            this.optionsCache = options[k];
+          }
+          break;
+
+        case 'allowHeaders':
+          this.allowHeaders = options[k];
+          break;
+
       }
     }
 
   }
 
-  /**
-   * 只在Node12以上可用 midware = async () => {} 这种语法
-   */
   mid () {
     let self = this;
 
@@ -47,9 +59,17 @@ class cors {
       let origin = `${c.protocol}://${c.host}`;
 
       if (self.allow === '*' || (self.allow.length > 0 && self.allow.indexOf(origin) >= 0) ) {
-        c.setHeader('Access-Control-Allow-Origin', '*');
-        c.setHeader('Access-Control-Allow-Methods', self.methods);
-        c.setHeader('Access-Control-Allow-Headers', 'content-type');
+        //c.setHeader('Access-Control-Allow-Origin', '*');
+        //c.setHeader('Access-Control-Allow-Methods', self.methods);
+        //c.setHeader('Access-Control-Allow-Headers', 'content-type');
+
+        c.setHeader('access-control-allow-origin', '*');
+        c.setHeader('access-control-allow-methods', self.methods);
+        c.setHeader('access-control-allow-headers', self.allowHeaders);
+
+        if (c.method === 'OPTIONS' && self.optionsCache > 0) {
+          c.setHeader('cache-control', `public,max-age=${self.optionsCache}`);
+        }
 
         await next();
 

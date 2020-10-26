@@ -56,3 +56,5 @@ class referer {
 
 
 }
+
+module.exports = referer;

@@ -1,14 +1,15 @@
 'use strict';
 
+exports.cors = require('./milldeware/cors');
+
 exports.cookie = require('./middleware/cookie');
 
 exports.session = require('./middleware/session');
 
-exports.cors = require('./milldeware/cors');
+exports.timing = require('./middleware/timing');
 
-//exports.cookie = require('./middleware/cookie');
+exports.tofile = require('./middleware/tofile');
 
-//exports.cookie = require('./middleware/cookie');
+exports.referer = require('./middleware/referer');
 
-//exports.cookie = require('./middleware/cookie');
-
+exports.apilimit = require('./middleware/apilimit');

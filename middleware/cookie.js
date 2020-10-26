@@ -5,7 +5,7 @@ class cookies {
 
   }
 
-  middleware () {
+  mid () {
     let self = this;
 
     return async (rr, next) => {

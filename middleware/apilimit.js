@@ -1,9 +1,6 @@
 class apilimit {
 
   /**
-   * token中保存
-   * 
-   * 
    * 
    */
   constructor (options = {}) {
