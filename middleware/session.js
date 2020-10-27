@@ -50,7 +50,10 @@ class session {
         c._sessionState = true
       }
 
-      c.getSession = (key) => {
+      c.getSession = (key = null) => {
+        if (key === null) {
+          return c._session
+        }
         return c._session[key] || null
       }
 
