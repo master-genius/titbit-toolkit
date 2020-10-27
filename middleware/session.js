@@ -12,6 +12,7 @@ const os = require('os');
 */
 
 class session {
+
   constructor () {
     this.expires = false;
     this.domain  = false;
@@ -55,6 +56,7 @@ class session {
 
       c.delSession = (key) => {
         delete c._session[key]
+        c._sessionState = true
       }
 
       c.clearSession = () => {
@@ -65,6 +67,7 @@ class session {
 
       let sess_file = '';
       let sessid = c.cookies[self.sessionKey];
+      let sess_state;
 
       if (sessid) {
         sess_file = `${self.sessionDir}${self.ds}${self.prefix}${sessid}`;
@@ -89,30 +92,30 @@ class session {
 
       if (sessid === undefined || sess_state === false) {
 
-        var org_name = `${c.url.host}_${Date.now()}__${Math.random()}`;
+        var org_name = `${c.host}_${Date.now()}__${Math.random()}`;
         var hash = crypto.createHash('sha1');
         hash.update(org_name);
 
-        var sessid = hash.digest('hex');
+        sessid = hash.digest('hex');
   
-        sess_file = sess.prefix + sessid;
+        sess_file = self.prefix + sessid;
   
-        var set_cookie = `${sess.sessionKey}=${sessid};`;
+        var set_cookie = `${self.sessionKey}=${sessid};`;
 
-        if (sess.expires) {
-          var t = new Date(Date.now() + sess.expires *1000);
+        if (self.expires) {
+          var t = new Date(Date.now() + self.expires *1000);
           set_cookie += `Expires=${t.toString()};`;
         }
   
-        set_cookie += `Path=${sess.path};`;
+        set_cookie += `Path=${self.path};`;
   
-        if (sess.domain) {
-          set_cookie += `Domain=${sess.domain}`;
+        if (self.domain) {
+          set_cookie += `Domain=${self.domain}`;
         }
   
-        var session_path_file = `${sess.sessionDir}/${sess_file}`;
+        var session_path_file = `${self.sessionDir}/${sess_file}`;
 
-        c._sessFile = session_path_file
+        c._sessFile = session_path_file;
 
         await new Promise((rv, rj) => {
           fs.writeFile(session_path_file, '{}', err => {

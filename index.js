@@ -1,6 +1,6 @@
 'use strict';
 
-exports.cors = require('./milldeware/cors');
+exports.cors = require('./middleware/cors');
 
 exports.cookie = require('./middleware/cookie');
 
