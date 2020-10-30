@@ -45,7 +45,7 @@ class tofile {
           return c.files[name]
         }
 
-        c.files[name][ind] = async (target, filename = null) => {
+        c.files[name][ind].toFile = async (target, filename = null) => {
           if (filename === null) {
             filename = `${c.helper.makeName()}${c.helper.extName(c.files[name][ind].filename)}`
           }

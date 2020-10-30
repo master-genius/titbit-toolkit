@@ -50,6 +50,10 @@ class staticdata {
       this.maxCacheSize = 100000;
     }
 
+    if (this.staticPath.length > 1 && this.staticPath[ this.staticPath.length-1 ] === '/') {
+      this.staticPath = this.staticPath.substring(0, this.staticPath.length-1);
+    }
+
   }
 
   mid () {
@@ -59,7 +63,11 @@ class staticdata {
 
       let real_path = c.param.starPath || c.path;
 
-      let pathfile = `${self.staticPath}/${real_path}`;
+      if (real_path[0] !== '/') {
+        real_path = `/${real_path}`;
+      }
+
+      let pathfile = `${self.staticPath}${real_path}`;
   
       if (self.cache.has(real_path)) {
 
@@ -121,7 +129,6 @@ class staticdata {
 
   }
 
-  
 }
 
 module.exports = staticdata;
