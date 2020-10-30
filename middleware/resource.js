@@ -2,6 +2,8 @@
 
 //const fs = require('fs');
 
+const zlib = require('zlib');
+
 /**
  * 处理静态资源的请求，需要把中间件挂载到一个分组下，否则会影响全局，如果一个只做静态分发的服务则可以全局启用。
  */
@@ -23,6 +25,10 @@ class staticdata {
 
     this.failedLimit = 50;
 
+    this.compress = true;
+
+    this.cacheControl = null;
+
     if (typeof options !== 'object') {
       options = {};
     }
@@ -39,8 +45,16 @@ class staticdata {
 
         case 'failedLimit':
           if (options[k] > 0) {
-            this.failedLimit = options[k]
+            this.failedLimit = options[k];
           }
+          break;
+
+        case 'compress':
+          this.compress = options[k];
+          break;
+
+        case 'cacheControl':
+          this.cacheControl = options[k];
           break;
 
       }
@@ -74,6 +88,16 @@ class staticdata {
         let r = self.cache.get(real_path);
 
         c.setHeader('content-type', r.type);
+        c.setHeader('content-length', r.data.length);
+        
+        if (r.gzip) {
+          c.setHeader('content-encoding', 'gzip');
+        }
+
+        if (self.cacheControl) {
+          c.setHeader('cache-control', self.cacheControl);
+        }
+
         c.send(r.data);
 
         return ;
@@ -82,12 +106,12 @@ class staticdata {
       try {
         let data = await c.helper.readb(pathfile);
   
-        let ctype = 'text/plain';
+        let ctype = 'text/plain; charset=utf-8';
 
         if (real_path.indexOf('.css') > 0) {
-          ctype = 'text/css';
+          ctype = 'text/css; charset=utf-8';
         } else if (real_path.indexOf('.js') > 0) {
-          ctype = 'text/javascript';
+          ctype = 'text/javascript; charset=utf-8';
         } else if (real_path.indexOf('.jpg') > 0 || real_path.indexOf('.jpeg') > 0) {
           ctype = 'image/jpeg';
         } else if (real_path.indexOf('.png') > 0) {
@@ -104,6 +128,21 @@ class staticdata {
           ctype = 'audio/mp3';
         }
 
+        let zipdata = null;
+
+        if (ctype.indexOf('text/') === 0 && self.compress) {
+          zipdata = await new Promise((rv, rj) => {
+              zlib.gzip(data, (err, d) => {
+                if (err) {
+                  rj(err);
+                } else {
+                  rv(d);
+                }
+              });
+          });
+
+        }
+
         if (self.cacheFailed >= self.failedLimit) {
           self.cacheFailed = 0;
           self.size = 0;
@@ -112,14 +151,25 @@ class staticdata {
           self.cacheFailed += 1;
         } else {
           self.cache.set(real_path, {
-            data : data,
-            type : ctype
+            data : zipdata || data,
+            type : ctype,
+            gzip : zipdata ? true : false,
           });
-          self.size += data.length;
+          self.size += zipdata ? zipdata.length : data.length;
         }
 
         c.setHeader('content-type', ctype);
-        c.send(data);
+        c.setHeader('content-length', zipdata ? zipdata.length : data.length);
+
+        if (zipdata) {
+          c.setHeader('content-encoding', 'gzip');
+        }
+
+        if (self.cacheControl) {
+          c.setHeader('cache-control', self.cacheControl);
+        }
+
+        c.send(zipdata || data);
 
       } catch (err) {
         c.status(404);

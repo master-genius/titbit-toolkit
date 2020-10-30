@@ -74,9 +74,10 @@ class timing {
         console.log(c.method, c.path, time_consume, 'ms')
 
         let last = self.route[c.method].get(c.routepath)
-        console.log('Count: ', last.total, ' ',
-          'Consume: ', last.consume, 'ms ', 
-          'Avg: ', (last.consume/last.total).toFixed(2))
+        console.log(
+          `Count: ${last.total}  Consume: ${last.consume} ms `,
+          `Average: ${(last.consume/last.total).toFixed(2)} ms`
+        )
       }
 
     }
