@@ -5,10 +5,6 @@ const http = require('http');
 const https = require('https');
 
 /**
- * 或者使用路径前缀，不同的路径前缀转发到不同的服务。
- */
-
-/**
  * {
  *    host : {}
  * }
@@ -38,6 +34,10 @@ class proxy {
     this.full = false;
 
     this.pathTable = {};
+
+    this.timeout = 10000;
+
+    this.starPath = false;
 
     this.error = {
       '502' : `<!DOCTYPE html><html>
@@ -76,12 +76,17 @@ class proxy {
     for (let k in options) {
       switch (k) {
         case 'host':
-          this.setHostProxy(options[k]); break;
+          this.setHostProxy(options[k]);
+          break;
 
         case 'maxBody':
           if (typeof options[k] == 'number' && parseInt(options[k]) >= 0) {
             this.maxBody = parseInt(options[k]);
           }
+          break;
+
+        case 'starPath':
+          this.starPath = options[k];
           break;
         
         /* case 'withPath':
@@ -90,6 +95,12 @@ class proxy {
 
         case 'full':
           this.full = options[k] ? true : false;
+          break;
+
+        case 'timeout':
+          if (typeof options[k] === 'number' && options[k] >= 0) {
+            this.timeout = options[k];
+          }
           break;
 
         default:;
@@ -186,12 +197,14 @@ class proxy {
   
         tmp.urlobj = this.parseUrl(tmp.url);
 
+        tmp.urlobj.timeout = tmp.timeout || this.timeout;
+
         this.hostProxy[k][pt] = {
           url : tmp.url,
           urlobj : tmp.urlobj,
           headers : {},
           path : tmp.path
-        };
+        };        
 
         if (tmp.headers !== undefined) {
           for (let h in tmp.headers) {
@@ -245,7 +258,9 @@ class proxy {
       path :    uobj.path,
       method :  'GET',
       headers : {},
+      timeout : uobj.timeout
     };
+
     if (uobj.host) {
       u.host = uobj.host;
       u.port = uobj.port;
@@ -263,6 +278,9 @@ class proxy {
 
   midhost () {
     let self = this;
+    let timeoutError = new Error('request timeout');
+    timeoutError.code = 'ETIMEOUT';
+
     return async (c, next) => {
 
       let host = c.host || c.headers['host'];
@@ -280,7 +298,8 @@ class proxy {
 
       let urlobj = self.copyUrlobj(pr.urlobj);
       //urlobj.path = c.path;
-      urlobj.path = c.request.url;
+      urlobj.path = self.starPath ? `/${c.param.starPath}` : c.request.url;
+
       urlobj.headers = c.headers;
       urlobj.method = c.method;
       urlobj.headers['x-real-ip'] = c.ip;
@@ -293,6 +312,10 @@ class proxy {
       let hci = urlobj.protocol == 'https:' ? https : http;
 
       let h = hci.request(urlobj);
+
+      h.on('timeout', () => {
+        h.destroy(timeoutError);
+      });
 
       return await new Promise((rv, rj) => {
         h.on('response', res => {
@@ -339,6 +362,9 @@ class proxy {
   }
 
   init (app) {
+
+    app.limit.timeout = this.timeout + 50;
+
     for (let p in this.pathTable) {
       app.router.map(this.methods, p, async c => {}, '@_proxy_host');
     }
