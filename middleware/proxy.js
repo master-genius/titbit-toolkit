@@ -364,6 +364,7 @@ class proxy {
   init (app) {
 
     app.limit.timeout = this.timeout + 50;
+    app.config.timeout = this.timeout + 50;
 
     for (let p in this.pathTable) {
       app.router.map(this.methods, p, async c => {}, '@_proxy_host');
