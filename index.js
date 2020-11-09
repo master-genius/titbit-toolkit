@@ -13,6 +13,10 @@ for (let i = 0; i < files.length; i++) {
     continue
   }
 
+  if (files[i].name.substring(files[i].name.length - 3) !== '.js') {
+    continue
+  }
+
   let modname = files[i].name.substring(0, files[i].name.length-3)
 
   exports[modname] = require('./middleware/'+files[i].name)

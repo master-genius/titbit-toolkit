@@ -29,6 +29,10 @@ class staticdata {
 
     this.cacheControl = null;
 
+    this.routePath = '/static/*';
+    
+    this.routeGroup = `__static_${parseInt(Math.random()*10000)}_`;
+
     if (typeof options !== 'object') {
       options = {};
     }
@@ -55,6 +59,18 @@ class staticdata {
 
         case 'cacheControl':
           this.cacheControl = options[k];
+          break;
+        
+        case 'routePath':
+          if (typeof options[k] === 'string') {
+            this.routePath = options[k];
+          }
+          break;
+
+        case 'routeGroup':
+          if (typeof options[k] === 'string') {
+            this.routeGroup = options[k];
+          }
           break;
 
       }
@@ -177,6 +193,11 @@ class staticdata {
   
     }
 
+  }
+
+  init (app, group = null) {
+    app.get(this.routePath, async c => {}, {group: group || this.routeGroup})
+    app.use(this.mid(), {group : group || this.routeGroup})
   }
 
 }

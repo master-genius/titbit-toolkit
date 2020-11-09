@@ -9,7 +9,7 @@ class cookies {
     let self = this;
 
     return async (rr, next) => {
-      rr.cookies = {};
+      rr.cookie = {};
       if (rr.headers['cookie']) {
         var cookies = rr.headers['cookie'].split(';').filter(c => c.length > 0);
     
@@ -25,15 +25,17 @@ class cookies {
             continue;
           }
           if (tmpList.length < 2) {
-            rr.cookies[name] = '';
+            rr.cookie[name] = '';
           }
           else {
-            rr.cookies[name] = tmpList[1];
+            rr.cookie[name] = tmpList[1];
           }
         }
       }
 
       await next();
+      
+      rr.cookie = null;
     };
 
   }

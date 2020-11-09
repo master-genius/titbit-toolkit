@@ -69,7 +69,7 @@ class session {
       }
 
       let sess_file = '';
-      let sessid = c.cookies[self.sessionKey];
+      let sessid = c.cookie[self.sessionKey];
       let sess_state;
 
       if (sessid) {
@@ -140,6 +140,8 @@ class session {
         var tmpText = JSON.stringify(c._session);
         fs.writeFile(c._sessFile, tmpText, (err) => {});
       }
+      
+      c._session = null;
 
     };
 
