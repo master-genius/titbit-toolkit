@@ -89,9 +89,16 @@ let st = new resource({
 
     //默认就是/static/*
     routePath : '/static/*'
+
+    routeGroup: '_static'
 })
 
 st.init(app)
+
+//添加到_static分组，之后，在public目录中的存在favicon.ico文件，
+//通过此请求既可以获取到。
+//浏览器会自动发起此请求获取tab标签的图标。
+app.get('/favicon.ico', async c => {}, {group: '_static'})
 
 ```
 
