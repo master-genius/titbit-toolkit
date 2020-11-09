@@ -3,7 +3,8 @@
 class cors {
 
   constructor (options = {}) {
-    this.allow = [];
+    
+    this.allow = '*';
     
     this.allowHeaders = 'content-type';
 
