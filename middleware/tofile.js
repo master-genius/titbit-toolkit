@@ -35,7 +35,7 @@ class tofile {
             if (c.files[name][i].toFile === undefined) {
               c.files[name][i].toFile = async (target, filename = null) => {
                 if (filename === null) {
-                  filename = `${c.helper.makeName()}${c.helper.extName(c.files[name][i].filename)}`
+                  filename = c.helper.makeName(c.files[name][i].filename)
                 }
                 await c.moveFile(c.files[name][i], `${target}/${filename}`)
                 return filename
@@ -45,12 +45,17 @@ class tofile {
           return c.files[name]
         }
 
-        c.files[name][ind].toFile = async (target, filename = null) => {
-          if (filename === null) {
-            filename = `${c.helper.makeName()}${c.helper.extName(c.files[name][ind].filename)}`
+        if (c.files[name][ind].toFile === undefined) {
+          c.files[name][ind].toFile = async (target, filename = null) => {
+
+            if (filename === null) {
+              filename = c.helper.makeName(c.files[name][ind].filename)
+            }
+
+            await c.moveFile(c.files[name][ind], `${target}/${filename}`)
+
+            return filename
           }
-          await c.moveFile(c.files[name][ind], `${target}/${filename}`)
-          return filename
         }
 
         return c.files[name][ind]
