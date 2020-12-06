@@ -142,6 +142,7 @@ let {cors} = require('titbit-toolkit')
 let cr = new cors({
     //默认为*表示全部开启跨域，
     //若要指定要支持的域名则需要传递一个数组。
+    //注意：这里指定的是用于访问接口的应用页面所在域。
     allow : [
         'https://a.com',
         'https://www.a.com',
