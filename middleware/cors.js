@@ -56,13 +56,10 @@ class cors {
 
     //只在titbit 21.5.4以上版本可用
     return async (c, next) => {
-
-      let origin = `${c.protocol}://${c.host}`;
+      
+      let origin = c.headers.origin || 'undefined';
 
       if (self.allow === '*' || (self.allow.length > 0 && self.allow.indexOf(origin) >= 0) ) {
-        //c.setHeader('Access-Control-Allow-Origin', '*');
-        //c.setHeader('Access-Control-Allow-Methods', self.methods);
-        //c.setHeader('Access-Control-Allow-Headers', 'content-type');
 
         c.setHeader('access-control-allow-origin', '*');
         c.setHeader('access-control-allow-methods', self.methods);
