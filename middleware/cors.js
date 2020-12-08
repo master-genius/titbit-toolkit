@@ -18,12 +18,18 @@ class cors {
 
     this.optionsCache = 60;
 
+    this.useOrigin = true;
+
     for (let k in options) {
       switch (k) {
         case 'allow':
           if (options[k] === '*' || (options[k] instanceof Array)) {
             this.allow = options[k];
           }
+          break;
+
+        case 'useOrigin':
+          this.useOrigin = options[k];
           break;
 
         case 'methods':
@@ -51,15 +57,30 @@ class cors {
 
   }
 
+  checkOrigin (url) {
+    if (this.useOrigin) {
+      return this.allow.indexOf(url) >= 0 ? true : false;
+    }
+
+    for (let i = 0; i < this.allow.length; i++) {
+      if (url.indexOf(this.allow[i]) === 0) {
+        return true;
+      }
+    }
+
+    return false;
+
+  }
+
   mid () {
     let self = this;
 
-    //只在titbit 21.5.4以上版本可用
     return async (c, next) => {
       
-      let origin = c.headers.origin || 'undefined';
+      let origin = c.headers.origin || c.headers['referer'] || 'undefined';
 
-      if (self.allow === '*' || (self.allow.length > 0 && self.allow.indexOf(origin) >= 0) ) {
+      if (self.allow === '*' || origin.indexOf(`${c.protocol}://${c.host}`) === 0 ||  self.checkOrigin(origin) )
+      {
 
         c.setHeader('access-control-allow-origin', '*');
         c.setHeader('access-control-allow-methods', self.methods);
@@ -82,3 +103,4 @@ class cors {
 }
 
 module.exports = cors;
+
