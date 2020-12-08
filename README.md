@@ -162,3 +162,56 @@ app.options('/*', async c => {
 })
 
 ```
+
+## realip
+
+在代理模式下，获取真实的客户端IP地址，常见的比如使用nginx作为反向代理，或者使用node自身作为代理，这时候后端的服务是代理服务请求并转发的，获取的IP地址永远都是代理服务的，而不是真实的客户端IP地址。
+
+这时候，代理服务为了能够让后端的服务知道真实的IP地址，会在请求转发时，设置消息头，常见的两个消息头：
+
+```
+x-real-ip
+x-forwarded-for
+```
+
+Nginx通常使用x-real-ip，x-forwarded-for最早在Squid软件中使用，你可以在自己的应用中使用其他消息头，这并不是什么标准，只是使用的多而已。
+
+> 因为使用的多了，x-forwarded-for被写入了RFC7239标准。
+
+realip默认会检测两个消息头，顺序为：x-real-ip，x-forwarded-for。只要有一个消息头被发现，就不再继续检测，而是直接使用发现的值。
+
+如果两个消息头都没有设置则会跳过。
+
+使用：
+
+``` JavaScript
+
+app.use( (new realip()).mid() )
+
+app.get('/*', async c => {
+    c.send(c.ip)
+})
+
+app.run(1234)
+
+```
+
+多级代理，如果使用了多级代理，这时候根据配置不同，有可能，会从第一层代理开始，每个后续的代理都把自己的看到的客户端IP地址追加到消息头的后面，并使用 , 分隔。
+
+此时，扩展检测到消息头信息中存在 , 则会切分成数组，第一个元素则为最开始用户请求的IP地址，并把此值赋值给请求上下文的ip属性。整个数组会挂载到c.box.realip。
+
+``` JavaScript
+
+app.use( (new realip()).mid() )
+
+app.get('/*', async c => {
+    let rip = {
+        ip : c.ip,
+        realip : c.box.realip || 'null'
+    }
+    c.send(rip)
+})
+
+app.run(1234)
+
+```
