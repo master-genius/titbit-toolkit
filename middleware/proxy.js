@@ -28,16 +28,20 @@ class proxy {
 
     this.hostProxy = {};
 
+    this.proxyBalance = {};
+
+    this.pathTable = {};
+
     this.urlpreg = /(unix|http|https):\/\/[a-zA-Z0-9\-\_]+/;
     this.withPath = false;
     this.maxBody = 50000000;
     this.full = false;
 
-    this.pathTable = {};
-
     this.timeout = 10000;
 
     this.starPath = false;
+
+    this.addIP = false;
 
     this.error = {
       '502' : `<!DOCTYPE html><html>
@@ -88,11 +92,7 @@ class proxy {
         case 'starPath':
           this.starPath = options[k];
           break;
-        
-        /* case 'withPath':
-          this.withPath = options[k] ? true : false;
-          break; */
-
+      
         case 'full':
           this.full = options[k] ? true : false;
           break;
@@ -101,6 +101,10 @@ class proxy {
           if (typeof options[k] === 'number' && options[k] >= 0) {
             this.timeout = options[k];
           }
+          break;
+
+        case 'addIP':
+          this.addIP = options[k];
           break;
 
         default:;
@@ -137,6 +141,7 @@ class proxy {
 
     let pt = '';
     let tmp = '';
+    let backend_obj = null;
 
     for (let k in cfg) {
 
@@ -153,6 +158,7 @@ class proxy {
        * {
        *    path : '',
        *    url : '',
+       *    aliveCheckPath : '',
        *    headers : {}
        * }
        */
@@ -193,23 +199,64 @@ class proxy {
 
         if (this.hostProxy[k] === undefined) {
           this.hostProxy[k] = {};
+          this.proxyBalance[k] = {};
         }
   
         tmp.urlobj = this.parseUrl(tmp.url);
 
         tmp.urlobj.timeout = tmp.timeout || this.timeout;
 
-        this.hostProxy[k][pt] = {
+        backend_obj = {
           url : tmp.url,
           urlobj : tmp.urlobj,
           headers : {},
-          path : tmp.path
-        };        
+          path : tmp.path,
+          weight: 1,
+          weightCount : 0,
+          alive : true,
+          aliveCheckInterval : 5,
+          aliveCheckPath : '/',
+          aliveCheckTimer : null
+        };
 
         if (tmp.headers !== undefined) {
           for (let h in tmp.headers) {
-            this.hostProxy[k][pt].headers[h] = tmp.headers[h];
+            backend_obj.headers[h] = tmp.headers[h];
           }
+        }
+
+        if (typeof tmp.aliveCheckPath === 'string' && tmp.aliveCheckPath.length > 0) {
+          if (tmp.aliveCheckPath[0] !== '/') {
+            tmp.aliveCheckPath = `/${tmp.aliveCheckPath}`;
+          }
+
+          backend_obj.aliveCheckPath = tmp.aliveCheckPath;
+        }
+
+        if (tmp.weight && typeof tmp.weight === 'number' && tmp.weight > 1) {
+          backend_obj.weight = parseInt(tmp.weight);
+        }
+
+        if (tmp.aliveCheckInterval && typeof tmp.aliveCheckInterval === 'number') {
+          if (tmp.aliveCheckInterval > 0 && tmp.aliveCheckInterval < 7200) {
+            backend_obj.aliveCheckInterval = tmp.aliveCheckInterval;
+          }
+        }
+
+        if (this.hostProxy[k][pt] === undefined) {
+          
+          this.hostProxy[k][pt] = [ backend_obj ];
+          this.proxyBalance[k][pt] = {
+            stepIndex : 0,
+            useWeight : false
+          };
+          
+        } else if (this.hostProxy[k][pt] instanceof Array) {
+          this.hostProxy[k][pt].push(backend_obj);
+        }
+
+        if (backend_obj.weight > 1) {
+          this.proxyBalance[k][pt].useWeight = true;
         }
 
         this.pathTable[pt] = 1;
@@ -228,6 +275,7 @@ class proxy {
       method :  'GET',
       headers : {},
     };
+
     if (u.search.length > 0) {
       urlobj.path += u.search;
     }
@@ -276,16 +324,53 @@ class proxy {
     return u;
   }
 
+  getBackend (c) {
+    let prlist = this.hostProxy[c.host][c.routepath];
+    let pb = this.proxyBalance[c.host][c.routepath];
+    let pr;
+
+    if (prlist.length === 1) {
+      pr = prlist[0];
+    } else {
+      if (pb.stepIndex >= prlist.length) {
+        pb.stepIndex = 0;
+      }
+
+      pr = prlist[pb.stepIndex];
+
+      if (pb.useWeight) {
+        if (pr.weightCount >= pr.weight) {
+          pr.weightCount = 0;
+          pb.stepIndex += 1;
+        } else {
+          pr.weightCount += 1;
+        }
+      }
+    }
+
+    if (pr.alive === false) {
+      for (let i = 0; i < prlist.length; i++) {
+        
+        pr = prlist[i];
+
+        if (pr.alive === true) {
+          return pr;
+        }
+      }
+      return null;
+    }
+
+    return pr;
+  }
+
   midhost () {
     let self = this;
     let timeoutError = new Error('request timeout');
     timeoutError.code = 'ETIMEOUT';
 
     return async (c, next) => {
-
-      let host = c.host || c.headers['host'];
       
-      if (self.hostProxy[host]===undefined || self.hostProxy[host][c.routepath]===undefined) {
+      if (self.hostProxy[c.host]===undefined || self.hostProxy[c.host][c.routepath]===undefined) {
         if (self.full) {
           c.status(502);
           c.send(self.error['502']);
@@ -294,20 +379,34 @@ class proxy {
         return await next();
       }
 
-      let pr = self.hostProxy[host][c.routepath];
+      let pr = self.getBackend(c);
+
+      if (pr === null) {
+        c.status(503);
+        c.send(self.error['503']);
+        return;
+      }
 
       let urlobj = self.copyUrlobj(pr.urlobj);
-      //urlobj.path = c.path;
-      urlobj.path = self.starPath ? `/${c.param.starPath}` : c.request.url;
+
+      if (self.starPath) {
+        urlobj.path = `/${c.param.starPath}`;
+        let qind = c.request.url.indexOf('?');
+        if ( qind > 0) {
+          urlobj.path += c.request.url.substring(qind);
+        }
+      } else {
+        urlobj.path = c.request.url;
+      }
 
       urlobj.headers = c.headers;
       urlobj.method = c.method;
-      urlobj.headers['x-real-ip'] = c.ip;
-      urlobj.headers['x-real-host'] = c.host;
-      
-      /* if (Object.keys(c.query).length > 0) {
-        urlobj.path += `?${querystring.stringify(c.query)}`;
-      } */
+
+      if (self.addIP && urlobj.headers['x-real-ip']) {
+        urlobj.headers['x-real-ip'] += `,${c.ip}`;
+      } else {
+        urlobj.headers['x-real-ip'] = c.ip;
+      }
 
       let hci = urlobj.protocol == 'https:' ? https : http;
 
@@ -361,15 +460,62 @@ class proxy {
 
   }
 
+  setTimer (pxy) {
+    if (pxy.aliveCheckPath && pxy.aliveCheckTimer === null) {
+
+      let h = http;
+
+      let opts = {
+        timeout : this.timeout
+      };
+
+      if (pxy.urlobj.protocol === 'https:') {
+        h = https;
+        opts.rejectUnauthorized = false;
+        opts.requestCert = false;
+      }
+
+      let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`;
+
+      pxy.aliveCheckTimer = setInterval(() => {
+
+        h.get(aliveUrl, opts, res => {
+          
+          res.on('error', err => {
+            pxy.alive = false;
+          })
+
+          res.on('data', chunk => {});
+          res.on('end', () => {});
+
+        }).on('error', err => {
+          pxy.alive = false;
+        });
+
+      }, parseInt(pxy.aliveCheckInterval * 1000) + parseInt(Math.random() * 50) );
+    }
+    
+  }
+
   init (app) {
 
-    app.limit.timeout = this.timeout + 50;
-    app.config.timeout = this.timeout + 50;
+    app.config.timeout = this.timeout;
 
     for (let p in this.pathTable) {
-      app.router.map(this.methods, p, async c => {}, '@_proxy_host');
+      app.router.map(this.methods, p, async c => {}, '@_t_proxy_');
     }
-    app.use(this.midhost(), {pre: true, group: `_proxy_host`});
+
+    app.use(this.midhost(), {pre: true, group: `_t_proxy_`});
+
+    for (let k in this.hostProxy) {
+
+      for (let p in this.hostProxy[k]) {
+        for (let i = 0; i < this.hostProxy[k][p].length; i++) {
+          this.setTimer(this.hostProxy[k][p][i]);
+        }
+      }
+      
+    }
 
   }
 
