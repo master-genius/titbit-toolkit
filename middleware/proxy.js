@@ -3,6 +3,7 @@
 const urlparse = require('url');
 const http = require('http');
 const https = require('https');
+const { setInterval } = require('timers');
 
 /**
  * {
@@ -42,6 +43,9 @@ class proxy {
     this.starPath = false;
 
     this.addIP = false;
+
+    //记录定时器
+    this.proxyIntervals = {};
 
     this.error = {
       '502' : `<!DOCTYPE html><html>
@@ -216,7 +220,7 @@ class proxy {
           alive : true,
           aliveCheckInterval : 5,
           aliveCheckPath : '/',
-          aliveCheckTimer : null
+          intervalCount : 0,
         };
 
         if (tmp.headers !== undefined) {
@@ -460,40 +464,50 @@ class proxy {
 
   }
 
-  setTimer (pxy) {
-    if (pxy.aliveCheckPath && pxy.aliveCheckTimer === null) {
+  timerRequest (pxy) {
+    let h = http;
 
-      let h = http;
+    let opts = {
+      timeout : this.timeout
+    };
 
-      let opts = {
-        timeout : this.timeout
-      };
+    if (pxy.urlobj.protocol === 'https:') {
+      h = https;
+      opts.rejectUnauthorized = false;
+      opts.requestCert = false;
+    }
 
-      if (pxy.urlobj.protocol === 'https:') {
-        h = https;
-        opts.rejectUnauthorized = false;
-        opts.requestCert = false;
+    let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`;
+
+    h.get(aliveUrl, opts, res => {
+      
+      res.on('error', err => {
+        pxy.alive = false;
+      })
+
+      res.on('data', chunk => {});
+      res.on('end', () => {});
+
+    }).on('error', err => {
+      pxy.alive = false;
+    });
+  }
+
+  setTimer (pxys) {
+    
+    let self = this;
+
+    return setInterval(() => {
+
+      for (let i = 0; i < pxys.length; i++) {
+        pxys[i].intervalCount += 1;
+        if (pxys[i].intervalCount >= pxys[i].aliveCheckInterval) {
+          pxys[i].intervalCount = 0;
+          self.timerRequest(pxys[i]);
+        }
       }
 
-      let aliveUrl = `${pxy.urlobj.protocol}//${pxy.urlobj.host}${pxy.aliveCheckPath}`;
-
-      pxy.aliveCheckTimer = setInterval(() => {
-
-        h.get(aliveUrl, opts, res => {
-          
-          res.on('error', err => {
-            pxy.alive = false;
-          })
-
-          res.on('data', chunk => {});
-          res.on('end', () => {});
-
-        }).on('error', err => {
-          pxy.alive = false;
-        });
-
-      }, parseInt(pxy.aliveCheckInterval * 1000) + parseInt(Math.random() * 50) );
-    }
+    }, 1000);
     
   }
 
@@ -509,10 +523,10 @@ class proxy {
 
     for (let k in this.hostProxy) {
 
+      this.proxyIntervals[k] = {};
+
       for (let p in this.hostProxy[k]) {
-        for (let i = 0; i < this.hostProxy[k][p].length; i++) {
-          this.setTimer(this.hostProxy[k][p][i]);
-        }
+        this.proxyIntervals[k][p] = this.setTimer(this.hostProxy[k][p]);
       }
       
     }
