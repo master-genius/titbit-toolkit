@@ -215,3 +215,80 @@ app.get('/*', async c => {
 app.run(1234)
 
 ```
+
+## proxy
+
+简单的代理服务，注意这个代理实现的是很简单的工作，不支持负载均衡，可以用在相对简单的场景。
+
+
+``` JavaScript
+
+'use strict'
+
+const titbit = require('titbit')
+const {proxy} = require('titbit-toolkit')
+
+let hostcfg = {
+
+    //会自动转换为数组的形式，默认path为 / 
+    'a.com' : 'http://localhost:8001',
+
+    //会自动转换为数组的形式
+    'b.com' : {
+        path : '/xyz',
+        url : 'http://localhost:8002'
+    },
+
+    //标准形式
+    'c.com' : [
+        {
+            path : '/name',
+            url  : 'http://localhost:8003'
+        },
+
+        {
+            path : '/',
+            url : 'http://localhost:8004'
+        }
+    ]
+
+};
+
+const app = new titbit({
+    debug: true
+})
+
+const pxy = new proxy({
+    timeout: 10000,
+    //如果开启此选项，会把代理路径后面的字符串作为路径转发，否则会转发整个路径
+    starPath : true,
+    host : hostcfg
+})
+
+pxy.init(app)
+
+app.daemon(1234, 2)
+
+```
+
+这个时候，要访问真正运行在8001端口的后端服务，可以按照以下形式：
+
+```
+http://a.com:1234/
+```
+
+访问运行在8002端口的服务：
+
+```
+http://b.com:1234/xyz/
+```
+
+### 关于starPath
+
+扩展要添加对应的路由，是 \* 表示的任意路径类型，这时候，后端的路由如何接收请求是一个问题：
+
+- 直接转发整个路径，这样，真正后端服务的每个路径都要加上路径前缀。
+
+- 只转发 ctx.param.starPath 表示的路径，不带有前缀。
+
+默认starPath为false，会转发整个路径。如果设置为ture，则真正后端的服务可以不考虑前缀的问题，比如在8002端口的服务每个路由都不需要加上/xyz。
