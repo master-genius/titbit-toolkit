@@ -34,8 +34,10 @@ class proxy {
     this.pathTable = {};
 
     this.urlpreg = /(unix|http|https):\/\/[a-zA-Z0-9\-\_]+/;
-    this.withPath = false;
+
     this.maxBody = 50000000;
+
+    //是否启用全代理模式。
     this.full = false;
 
     this.timeout = 10000;
@@ -486,7 +488,10 @@ class proxy {
       })
 
       res.on('data', chunk => {});
-      res.on('end', () => {});
+      
+      res.on('end', () => {
+        pxy.alive = true;
+      });
 
     }).on('error', err => {
       pxy.alive = false;
