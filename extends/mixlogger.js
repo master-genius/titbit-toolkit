@@ -24,7 +24,11 @@ class mixlogger {
 
   init(app) {
 
-    if (cluster.isMaster && app.daeMsgEvent['_log'] === undefined) {
+    if (cluster.isWorker) {
+      return
+    }
+
+    if (app.daeMsgEvent['_log'] === undefined) {
       console.error(`Warning: mixlogger must be running in daemon mode`)
       return
     }
