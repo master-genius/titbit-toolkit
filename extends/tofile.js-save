@@ -1,0 +1,70 @@
+'use strict';
+
+/**
+ * 
+ * 通过挂载方法到files上，可以快速写入数据到文件
+ * 
+ */
+
+class tofile {
+
+  constructor () {
+
+  }
+
+  getFile (name, ind) {
+    if (this.files[name] === undefined) {
+      return null
+    }
+
+    if (ind >= this.files[name].length) {
+      return null
+    }
+
+    if (ind < 0) {
+      for (let i = 0; i < this.files[name].length; i++) {
+        if (this.files[name][i].toFile === undefined) {
+          this.files[name][i].toFile = async (target, filename = null) => {
+            if (filename === null) {
+              filename = `${this.helper.makeName()}${this.helper.extName(this.files[name][i].filename)}`
+            }
+            await this.moveFile(this.files[name][i], `${target}/${filename}`)
+            return filename
+          }
+        }
+      }
+      return this.files[name]
+    }
+
+    //bug: Cannot set property 'toFile' of undefined
+    this.files[name][ind].toFile = async (target, filename = null) => {
+      if (filename === null) {
+        filename = `${this.helper.makeName()}${this.helper.extName(this.files[name][ind].filename)}`
+      }
+      await this.moveFile(this.files[name][ind], `${target}/${filename}`)
+      return filename
+    }
+
+    return this.files[name][ind]
+  }
+
+  mid () {
+    let self = this
+
+    return async (c, next) => {
+      if (!c.isUpload) {
+        await next()
+        return
+      }
+
+      c.getFile = self.getFile
+
+      await next()
+
+    }
+
+  }
+
+}
+
+module.exports = tofile
