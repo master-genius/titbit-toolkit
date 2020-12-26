@@ -1,6 +1,6 @@
 'use strict'
 
-//const cluster = require('cluster')
+const cluster = require('cluster')
 
 class mixlogger {
 
@@ -24,7 +24,7 @@ class mixlogger {
 
   init(app) {
 
-    if (app.daeMsgEvent['_log'] === undefined) {
+    if (cluster.isMaster && app.daeMsgEvent['_log'] === undefined) {
       console.error(`Warning: mixlogger must be running in daemon mode`)
       return
     }
