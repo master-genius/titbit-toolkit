@@ -113,6 +113,34 @@ class cors {
 
   }
 
+  init(app, routerGroup = null) {
+    if (routerGroup === null) {      
+      app.options('/*', async c => {});
+      app.pre(this.mid());
+
+    } else if (typeof routerGroup === 'object') {
+      let grouplog = {};
+
+      for (let k in routerGroup) {  
+        app.options(k, async c => {}, {group: routerGroup[k]});
+
+        if (grouplog[ routerGroup[k] ] === undefined) {
+          app.pre(this.mid(), {group: routerGroup[k]});
+        }
+
+        grouplog[ routerGroup[k] ] = 1;
+
+      }
+
+    } else if (routerGroup instanceof Array) {
+      for (let i = 0; i < routerGroup.length; i++) {
+        app.options(routerGroup[i], async c => {});
+      }
+      app.pre(this.mid());
+    }
+
+  }
+
 }
 
 module.exports = cors;
