@@ -8,6 +8,8 @@ class cors {
     
     this.allowHeaders = 'content-type';
 
+    this.headers = null;
+
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS', 'PATCH', 'TRACE', 'HEAD'
     ];
@@ -52,6 +54,12 @@ class cors {
           this.allowHeaders = options[k];
           break;
 
+        case 'headers':
+          if (typeof options[k] === 'object') {
+            this.headers = options[k];
+          }
+          break;
+
       }
     }
 
@@ -85,6 +93,11 @@ class cors {
         c.setHeader('access-control-allow-origin', '*');
         c.setHeader('access-control-allow-methods', self.methods);
         c.setHeader('access-control-allow-headers', self.allowHeaders);
+        if (self.headers) {
+          for (let k in self.headers) {
+            c.setHeader(k, self.headers[k]);
+          }
+        }
 
         if (c.method === 'OPTIONS' && self.optionsCache > 0) {
           c.setHeader('cache-control', `public,max-age=${self.optionsCache}`);
