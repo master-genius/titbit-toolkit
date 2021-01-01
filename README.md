@@ -283,20 +283,21 @@ const pxy = new proxy({
 
 pxy.init(app)
 
-app.daemon(1234, 2)
+//在Linux上，必须以root身份运行才能监听80端口。
+app.daemon(80, 2)
 
 ```
 
 这个时候，要访问真正运行在8001端口的后端服务，可以按照以下形式：
 
 ```
-http://a.com:1234/
+http://a.com/
 ```
 
 访问运行在8002端口的服务：
 
 ```
-http://b.com:1234/xyz/
+http://b.com/xyz/
 ```
 
 ### 关于starPath
@@ -327,7 +328,8 @@ http://b.com:1234/xyz/
 
 let load_balance_cfg = {
 
-    'a.com:1111' : [
+    //端口必须和监听一致。如果监听80或443（http和https默认端口）则不需要携带端口号。
+    'a.com:1234' : [
         {
             path : '/',
             url : 'http://localhost:1234',
@@ -471,3 +473,37 @@ app.run(1234)
 - sendxml
 
 参数和titbit框架在请求上下文提供的send一致。
+
+## setfinal
+
+设置最终要添加的中间件，titbit会添加一个最终的中间件用于返回c.res.body的数据。此扩展可以让你自定义这个最终的中间件。
+
+```javascript
+
+const titbit = require('titbit')
+const {setfinal} = require('titbit-toolkit')
+
+const app = new titbit({
+    debug: true
+})
+
+let fn = new setfinal({
+    http1Final : async (c, next) => {
+        await next()
+        //...
+    },
+
+    http2Final : async (c, next) => {
+        await next()
+        //...
+    }
+})
+
+fn.init(app)
+
+//your code
+
+app.run(1234)
+
+
+```
