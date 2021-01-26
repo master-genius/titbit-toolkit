@@ -8,7 +8,7 @@ class cors {
     
     this.allowHeaders = 'content-type';
 
-    this.headers = null;
+    this.requestHeaders = '*';
 
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS', 'PATCH', 'TRACE', 'HEAD'
@@ -18,7 +18,7 @@ class cors {
       options = {};
     }
 
-    this.optionsCache = 60;
+    this.optionsCache = 600;
 
     this.useOrigin = true;
 
@@ -28,6 +28,10 @@ class cors {
           if (options[k] === '*' || (options[k] instanceof Array)) {
             this.allow = options[k];
           }
+          break;
+
+        case 'requestHeaders':
+          this.requestHeaders = options[k];
           break;
 
         case 'useOrigin':
@@ -52,12 +56,6 @@ class cors {
 
         case 'allowHeaders':
           this.allowHeaders = options[k];
-          break;
-
-        case 'headers':
-          if (typeof options[k] === 'object') {
-            this.headers = options[k];
-          }
           break;
 
       }
@@ -87,17 +85,14 @@ class cors {
       
       let origin = c.headers.origin || c.headers['referer'] || 'undefined';
 
+      // * 或者 请求源和服务域名一致 或者 在允许域名范围内。
       if (self.allow === '*' || origin.indexOf(`${c.protocol}://${c.host}`) === 0 ||  self.checkOrigin(origin) )
       {
 
         c.setHeader('access-control-allow-origin', '*');
         c.setHeader('access-control-allow-methods', self.methods);
         c.setHeader('access-control-allow-headers', self.allowHeaders);
-        if (self.headers) {
-          for (let k in self.headers) {
-            c.setHeader(k, self.headers[k]);
-          }
-        }
+        c.setHeader('access-control-request-headers', self.requestHeaders);
 
         if (c.method === 'OPTIONS' && self.optionsCache > 0) {
           c.setHeader('cache-control', `public,max-age=${self.optionsCache}`);
@@ -114,11 +109,13 @@ class cors {
   }
 
   init(app, routerGroup = null) {
-    if (routerGroup === null) {      
+    if (routerGroup === null) {
+
       app.options('/*', async c => {});
       app.pre(this.mid());
 
     } else if (typeof routerGroup === 'object') {
+
       let grouplog = {};
 
       for (let k in routerGroup) {  
