@@ -18,7 +18,7 @@ class cors {
       options = {};
     }
 
-    this.optionsCache = 600;
+    this.optionsCache = null;
 
     this.useOrigin = true;
 
@@ -49,9 +49,7 @@ class cors {
           break;
 
         case 'optionsCache':
-          if (!isNaN(options[k])) {
-            this.optionsCache = options[k];
-          }
+          this.optionsCache = options[k];
           break;
 
         case 'allowHeaders':
@@ -94,8 +92,8 @@ class cors {
         c.setHeader('access-control-allow-headers', self.allowHeaders);
         c.setHeader('access-control-request-headers', self.requestHeaders);
 
-        if (c.method === 'OPTIONS' && self.optionsCache > 0) {
-          c.setHeader('cache-control', `public, max-age=${self.optionsCache}`);
+        if (c.method === 'OPTIONS' && self.optionsCache) {
+          c.setHeader('cache-control', self.optionsCache);
         }
 
         await next();
