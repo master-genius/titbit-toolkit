@@ -95,7 +95,7 @@ class cors {
         c.setHeader('access-control-request-headers', self.requestHeaders);
 
         if (c.method === 'OPTIONS' && self.optionsCache > 0) {
-          c.setHeader('cache-control', `public,max-age=${self.optionsCache}`);
+          c.setHeader('cache-control', `public, max-age=${self.optionsCache}`);
         }
 
         await next();
