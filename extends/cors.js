@@ -112,7 +112,7 @@ class cors {
       app.options('/*', async c => {});
       app.pre(this.mid());
 
-    } else if (typeof routerGroup === 'object') {
+    } else if (routerGroup.toString() === '[object Object]') {
 
       let grouplog = {};
 
