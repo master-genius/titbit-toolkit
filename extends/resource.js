@@ -143,7 +143,12 @@ class staticdata {
       }
 
       if (self.decodePath) {
-        real_path = decodeURIComponent(real_path)
+        try {
+          real_path = decodeURIComponent(real_path)
+        } catch (err) {
+          c.send('', 404)
+          return
+        }
       }
 
       let pathfile = `${self.staticPath}${real_path}`

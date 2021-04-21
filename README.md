@@ -9,19 +9,43 @@ app.use( t.mid() )
 
 ```
 
+从titbit-v22.2.1开始，支持加载具有mid属性或者middleware属性作为中间件，要求：
+
+- mid是一个普通函数，运行此函数要返回一个真正的中间件函数。
+
+- middleware则应该是一个完整的中间件函数，会自动进行this绑定（箭头函数无法绑定this）。
+
+会先检测mid属性，不满足条件才会检测middleware，但是如果mid的返回值不满足条件会抛出错误。
+
+所以从titbit-v22.2.1之后，可以直接使用以下方式加载：
+
+```javascript
+
+const titbit = require('titbit')
+const {pipe} = require('titbit-toolkit')
+
+const app = new titbit()
+
+app.use( new pipe() )
+
+```
+
+一些扩展因为要做的工作比较多，会提供init方法，这时候，通常是以这样的方式启用扩展：
+
+```javascript
+
+//t是扩展模块的实例。
+t.init(app)
+
+```
+
+这种方式要看具体扩展的文档描述。
+
 
 ## 导出示例
 
 ``` JavaScript
 const {timing,resource,tofile} = require('titbit-toolkit')
-```
-
-一些扩展还会有init接口，这种情况下，只需要运行：
-
-```
-//t是初始化的扩展实例，app是titbit实例。
-t.init(app)
-
 ```
 
 ## timing
@@ -38,11 +62,11 @@ t.init(app)
 
 let ck = new cookie()
 
-app.use(ck.mid())
+app.use( ck.mid() )
 
 let sess = new session()
 
-app.use(sess.mid())
+app.use( sess.mid() )
 
 
 ```
@@ -63,7 +87,7 @@ let st = new resource({
 })
 
 //只对分组为static执行中间件。
-app.use(st.mid(), {group: 'static'})
+app.use(st, {group: 'static'})
 
 //添加静态资源路由
 app.get('/static/*', async c => {
@@ -90,7 +114,12 @@ let st = new resource({
     //默认就是/static/*
     routePath : '/static/*'
 
-    routeGroup: '_static'
+    routeGroup: '_static',
+
+    //默认不会把路径进行base64解码，所以要支持对中文路径的识别，需要开启此选项。
+
+    decodePath: true
+
 })
 
 st.init(app)
@@ -110,7 +139,7 @@ app.get('/favicon.ico', async c => {}, {group: '_static'})
 
 let {tofile} = require('titbit-toolkit')
 
-app.use( (new tofile()).mid() )
+app.use( new tofile() )
 
 app.post('/upload', async c => {
     let f = c.getFile('image')
@@ -502,6 +531,30 @@ let fn = new setfinal({
 fn.init(app)
 
 //your code
+
+app.run(1234)
+
+
+```
+
+## pipe
+
+
+创建可读流返回文件内容。对于稍大的文件，使用fs.createReadStream创建可读流会更好。此扩展就是对此功能的封装：
+
+```javascript
+
+const titbit = require('titbit')
+const {pipe} = require('titbit-toolkit')
+
+app.use( new pipe() )
+
+let filepath = './images/a.jpg'
+
+app.get('/image', async c => {
+  //中间件扩展启用后，会在box属性上挂载pipe函数。
+  await c.box.pipe(filepath)
+})
 
 app.run(1234)
 
