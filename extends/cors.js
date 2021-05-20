@@ -11,7 +11,7 @@ class cors {
     this.requestHeaders = '*';
 
     this.methods = [
-      'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS', 'PATCH', 'TRACE', 'HEAD'
+      'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'
     ];
 
     if (typeof options !== 'object') {

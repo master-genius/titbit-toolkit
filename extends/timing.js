@@ -1,4 +1,6 @@
-'use strict';
+'use strict'
+
+const fs = require('fs')
 
 class timing {
 
@@ -21,6 +23,8 @@ class timing {
 
     this.test = false
 
+    this.logfile = ''
+
     if (typeof options !== 'object') {
       options = {}
     }
@@ -29,6 +33,9 @@ class timing {
       switch (k) {
         case 'test':
           this.test = options[k]
+          break
+        case 'logfile':
+          this.logfile = options[k]
           break
       }
     }
@@ -69,15 +76,29 @@ class timing {
 
       }
 
+      let last = self.route[c.method].get(c.routepath)
+
       if (self.test) {
         
         console.log(c.method, c.path, time_consume, 'ms')
 
-        let last = self.route[c.method].get(c.routepath)
         console.log(c.method, c.path,'\n',
           `  Count: ${last.total}  Total: ${last.consume} ms `,
           `Average: ${(last.consume/last.total).toFixed(2)} ms`
         )
+      }
+
+      if (self.logfile) {
+        
+        let log_text = `${c.method} - ${c.path} - count: ${last.total}, `
+                        + `total: ${last.consume}ms, `
+                        + `average: ${(last.consume/last.total).toFixed(2)}ms\n`
+
+        fs.writeFile(self.logfile, log_text, {flag: 'a+'}, err => {
+          if (self.test && err) {
+            console.error(err)
+          }
+        })
       }
 
     }
