@@ -12,11 +12,11 @@ class timing {
      */
 
     this.route = {
-      'GET'  : new Map(),
-      'POST' : new Map(),
-      'PUT'  : new Map(),
-      'DELETE' : new Map(),
-      'OPTIONS' : new Map()
+      GET  : new Map(),
+      POST : new Map(),
+      PUT  : new Map(),
+      DELETE : new Map(),
+      OPTIONS : new Map()
     }
 
     this.maxLimit = 100
@@ -34,6 +34,7 @@ class timing {
         case 'test':
           this.test = options[k]
           break
+          
         case 'logfile':
           this.logfile = options[k]
           break
