@@ -9,13 +9,13 @@ app.use( t.mid() )
 
 ```
 
-从titbit-v22.2.1开始，支持加载具有mid属性或者middleware属性作为中间件，要求：
+**从titbit-v22.2.1开始，支持加载具有mid属性或者middleware属性作为中间件，要求：**
 
 - mid是一个普通函数，运行此函数要返回一个真正的中间件函数。
 
 - middleware则应该是一个完整的中间件函数，会自动进行this绑定（箭头函数无法绑定this）。
 
-会先检测mid属性，不满足条件才会检测middleware，但是如果mid的返回值不满足条件会抛出错误。
+**titbit会先检测mid属性，不满足条件才会检测middleware，但是如果mid的返回值不满足条件会抛出错误。**
 
 所以从titbit-v22.2.1之后，可以直接使用以下方式加载：
 
@@ -112,7 +112,7 @@ let st = new resource({
     staticPath: './public',
 
     //默认就是/static/*
-    routePath : '/static/*'
+    routePath : '/static/*',
 
     routeGroup: '_static',
 
@@ -560,3 +560,95 @@ app.run(1234)
 
 
 ```
+
+## paramcheck参数检测
+
+此扩展非常有利于一些需要路由和查询字符串类型和数值验证的场景。比如，支持查询字符串pagesize和offset，而这两个参数可以没有，也可以任意携带，但是必须是>=0的数字。在复杂的程序里，会涉及到很多这种场景，在处理逻辑的代码中就要不断的编写类型验证的代码保证数据的安全。
+
+此扩展通过声明的方式，告诉程序如何验证数据，如果不符合要求则会返回400错误。
+
+使用：
+
+```javascript
+
+const {paramcheck} = require('titbit-toolkit')
+const titbit = require('titbit')
+
+const app = new titbit({
+  debug: true
+})
+
+let pck = new paramcheck({
+  //支持query或param，对应于请求上下文的ctx.query和ctx.param。
+  key: 'query',
+
+  //要验证的数据，key值即为属性名称，验证规则可以是string|number|object。
+  //string会严格判等，number仅仅数据判等，object是最强大的功能。
+  data : {
+    say: 'hello',
+    ok : 123,
+    offset: {
+      //如果c.query.offset是undefined，则会赋值为0。
+      default: 0,
+      //要转换的类型，只能是int或float
+      to: 'int',
+      //最小值，>=
+      min: 0,
+      //最大值，<=
+      max: 100
+    },
+  }
+
+})
+
+let paramck = new paramcheck({
+  //支持query或param，对应于请求上下文的ctx.query和ctx.param。
+  key: 'param',
+
+  //要验证的数据，key值即为属性名称，验证规则可以是string|number|object。
+  //string会严格判等，number仅仅数据判等，object是最强大的功能。
+  data : {
+    name: {
+      //obj是c.query或c.param，k是属性名称
+      callback: (obj, k) => {
+        if (obj[k].length < 2 || obj[k].length > 8) {
+          return false
+        }
+        return true
+      }
+    },
+
+    age : {
+      to: 'int',
+      min: 12,
+      max: 65
+    },
+    
+    mobile: {
+      //利用callback，可以实现完全自主的自定义规则。
+      callback: (obj, k) => {
+        let preg = /^(12|13|15|16|17|18|19)[0-9]{9}$/
+        if (!preg.test(obj[k])) {
+          return false
+        }
+        return true
+      }
+    }
+  }
+
+})
+
+app.use(pck).use(paramck)
+
+app.get('/user/:name/:age/:mobile', async c => {
+  c.send({
+    query: c.query,
+    param: c.param
+  })
+})
+
+app.run(1234)
+
+```
+
+这看起来很复杂，但是这样做的好处是可以复用规则。在多个复杂的应用处理上，很多参数的验证规则是一致的。
