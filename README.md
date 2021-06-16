@@ -111,14 +111,18 @@ let st = new resource({
     //设定静态资源所在目录
     staticPath: './public',
 
-    //默认就是/static/*
+    //默认就是/static/*，添加的路由，前端必须以/static/ 开头，后面是./public目录下的文件路径。
     routePath : '/static/*',
 
     routeGroup: '_static',
 
     //默认不会把路径进行base64解码，所以要支持对中文路径的识别，需要开启此选项。
 
-    decodePath: true
+    decodePath: true,
+
+    // 前缀路径，默认为空字符串。
+    // 如果设置为xyz，会自动修正为/xyz。
+    //prepath : ''
 
 })
 
@@ -130,6 +134,13 @@ st.init(app)
 app.get('/favicon.ico', async c => {}, {group: '_static'})
 
 ```
+
+#### 关于prepath选项
+
+有时候你会面临这样的需求，静态资源目录为public，但是里面不是所有的资源都是静态资源，而且是以目录独立存放的。比如，对于前端来说，只需要引入/static/css/a.css即可，但是后台默认会读取/public/x/css/a.css文件返回数据，此时的prepath为x，某一时刻，配置更改prepath为y，这时候前端引入资源的路径不变，而服务端，Node.js无需重启，各个对象无需重新实例化，只需要更改prepath配置即可实现资源所在目录的更改。
+
+此功能有一个很重要的应用，就是为自动切换前端应用主题资源提供支持。
+
 
 ## tofile
 
