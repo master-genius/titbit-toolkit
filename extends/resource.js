@@ -17,7 +17,7 @@ class staticdata {
     this.staticPath = ''
 
     //最大缓存，单位为字节，0表示不限制。
-    this.maxCacheSize = 300000000
+    this.maxCacheSize = 50000000
 
     this.size = 0
 
@@ -31,6 +31,8 @@ class staticdata {
     this.cacheControl = null
 
     this.routePath = '/static/*'
+
+    this.prepath = ''
     
     this.routeGroup = `__static_${parseInt(Math.random()*10000)}_`
 
@@ -79,6 +81,15 @@ class staticdata {
         case 'decodePath':
           this.decodePath = options[k]
           break
+
+        case 'prepath':
+          this.prepath = options[k]
+
+          if (this.prepath.length > 0 && this.prepath[0] !== '/') {
+            this.prepath = `/${this.prepath}`
+          }
+          break
+
       }
     }
 
@@ -151,7 +162,7 @@ class staticdata {
         }
       }
 
-      let pathfile = `${self.staticPath}${real_path}`
+      let pathfile = `${self.staticPath}${self.prepath}${real_path}`
   
       if (self.cache.has(real_path)) {
 
