@@ -128,22 +128,28 @@ class staticdata {
 
   filetype (filename) {
 
-    let extsplit = filename.split('.')
+    let extind = filename.length - 1
+    let extstart = filename.length - 5
 
-    if (extsplit.length > 0) {
-      let extname = extsplit[ extsplit.length - 1 ]
+    while (extind > 0 && extind >= extstart) {
+      if (filename[extind] === '.')
+        break
 
-      if (this.ctypeMap[extname] !== undefined) {
-        return this.ctypeMap[extname]
-      }
+      extind -= 1
+    }
+
+    let extname = filename.substring(extind+1)
+
+    if (this.ctypeMap[extname] !== undefined) {
+      return this.ctypeMap[extname]
     }
 
     return 'application/octet-stream'
-
   }
 
   mid () {
-    let self = this;
+
+    let self = this
 
     return async (c, next) => {
 
