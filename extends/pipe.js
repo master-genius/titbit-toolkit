@@ -26,7 +26,6 @@ class pipe {
     
   }
 
-
   mid () {
     let self = this
 

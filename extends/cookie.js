@@ -6,10 +6,11 @@ class cookies {
   }
 
   mid () {
-    let self = this;
 
     return async (rr, next) => {
+      
       rr.cookie = {};
+
       if (rr.headers['cookie']) {
         var cookies = rr.headers['cookie'].split(';').filter(c => c.length > 0);
     

@@ -2,56 +2,15 @@
 
 class realip {
 
-  constructor (options = {}) {
+  constructor () {
     
-    this.realIpHeader = [
-      'x-real-ip',
-      'x-forwarded-for'
-    ]
-
-    if (typeof options !== 'object') {
-      options = {}
-    }
-
-    for (let k in options) {
-
-      switch (k) {
-        case 'fields':
-          if (typeof options[k] === 'string') {
-            this.realIpHeader = [ options[k] ]
-          } else if (options[k] instanceof Array) {
-            if (options[k].length > 0) {
-              this.realIpHeader = options[k]
-              for (let i = 0; i < this.realIpHeader.length; i++) {
-                this.realIpHeader[i] = this.realIpHeader[i].toLowerCase()
-              }
-            }
-          }
-          
-          break
-
-      }
-
-    }
-
   }
 
   mid () {
 
-    let self = this
-
     return async (c, next) => {
 
-      let realipstr = ''
-
-      for (let i = 0; i < self.realIpHeader.length; i++) {
-        
-        if (c.headers[ self.realIpHeader[i] ] !== undefined) {
-          realipstr = c.headers[ self.realIpHeader[i] ]
-          break
-        }
-
-      }
+      let realipstr = c.headers['x-real-ip'] || c.headers['x-forwarded-for'] || ''
 
       if (realipstr !== '') {
         if (realipstr.indexOf(',') > 0) {

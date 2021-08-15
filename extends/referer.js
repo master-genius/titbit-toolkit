@@ -5,6 +5,8 @@ class referer {
 
     this.allow = [];
 
+    this.failedCode = 404;
+
     if (typeof options !== 'object') {
       options = {};
     }
@@ -16,6 +18,11 @@ class referer {
             this.allow = options[k];
           }
           break;
+        
+        case 'failedCode':
+          if (typeof options[k] === 'number' && options[k] >=400 && options[k] < 500)
+            this.failedCode = options[k];
+          break;
 
       }
     }
@@ -26,34 +33,35 @@ class referer {
     let self = this;
 
     return async (c, next) => {
-      if (c.headers['referer'] === undefined) {
-        c.headers['referer'] = '';
-      }
+
+      if (c.headers.referer === undefined) c.headers.referer = '';
 
       let stat = false;
 
       if (self.allow === '*' || self.allow.length === 0 ) {
         stat = true;
-      } else {
-        for (let i = 0; i < self.allow.length; i++) {
-          if (c.headers['referer'].indexOf(self.allow[i]) === 0) {
+      }
+      else {
+        let refer = c.headers.referer;
+
+        for (let i = self.allow.length - 1; i >= 0; i--) {
+          if (refer.indexOf(self.allow[i]) === 0) {
             stat = true;
             break;
           }
         }
+
       }
       
       if (stat) {
         await next();
       } else {
-        c.status(403);
-        c.res.body = 'Forbidden!';
+        c.send('', self.failedCode);
       }
 
     };
 
   }
-
 
 }
 

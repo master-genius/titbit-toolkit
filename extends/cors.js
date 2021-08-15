@@ -84,7 +84,9 @@ class cors {
       let origin = c.headers.origin || c.headers['referer'] || 'undefined';
 
       // * 或者 请求源和服务域名一致 或者 在允许域名范围内。
-      if (self.allow === '*' || origin.indexOf(`${c.protocol}://${c.host}`) === 0 ||  self.checkOrigin(origin) )
+      if (self.allow === '*'
+        || origin.indexOf(`${c.protocol}://${c.host}`) === 0
+        ||  self.checkOrigin(origin) )
       {
 
         c.setHeader('access-control-allow-origin', '*');
@@ -99,8 +101,7 @@ class cors {
         await next();
 
       } else {
-        c.status(403);
-        c.res.body = '';
+        c.send('', 404);
       }
     };
 
@@ -139,4 +140,3 @@ class cors {
 }
 
 module.exports = cors;
-

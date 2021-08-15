@@ -1,8 +1,7 @@
-'use strict';
+'use strict'
 
-const fs = require('fs');
-const crypto = require('crypto');
-const os = require('os');
+const fs = require('fs')
+const crypto = require('crypto')
 
 /*
   这个模块用于titbit框架的登录会话，调用一定要在cookie中间件之后。
@@ -14,36 +13,46 @@ const os = require('os');
 class session {
 
   constructor () {
-    this.expires = false;
-    this.domain  = false;
-    this.path  = '/';
-    this.sessionDir = '/tmp';
+    this.expires = false
+    this.domain  = false
+    this.path  = '/'
+    this.sessionDir = '/tmp'
 
-    this.ds = '/';
+    this.ds = '/'
 
-    if (os.platform().indexOf('win') === 0) {
-      this.ds = '\\';
-      this.sessionDir = 'C:\\Users\\Public\\sess';
+    if (process.platform.indexOf('win') === 0) {
+      this.ds = '\\'
+      this.sessionDir = 'C:\\Users\\Public\\sess'
       try {
-        fs.accessSync(this.sessionDir);
+        fs.accessSync(this.sessionDir)
       } catch (err) {
-        fs.mkdirSync(this.sessionDir);
+        fs.mkdirSync(this.sessionDir)
       }
     }
 
-    this.prefix = 'titbit_sess_';
+    this.prefix = 'titbit_sess_'
 
-    this.sessionKey = 'TITBIT_SESSID';
+    this.sessionKey = 'TITBIT_SESSID'
+
+    this.error = null
 
   }
 
   mid () {
-    let self = this;
+    let self = this
 
     return async (c, next) => {
       c._session = {}
       c._sessionState = false
       c._sessFile = ''
+
+      c.sessionError = (options = {}) => {
+        let err = self.error
+        
+        if (options.clear) self.error = null
+
+        return err
+      }
 
       c.setSession = (key, data) => {
         c._session[key] = data
@@ -65,90 +74,97 @@ class session {
       c.clearSession = () => {
         c._sessionState = false
         c._session = {}
-        fs.unlink(c._sessFile, (err) => {})
+        fs.unlink(c._sessFile, (err) => {
+          err && (self.error = err)
+        })
       }
 
-      let sess_file = '';
-      let sessid = c.cookie[self.sessionKey];
-      let sess_state;
+      let sess_file = ''
+      let sessid = c.cookie[ self.sessionKey ]
+      let sess_state
 
       if (sessid) {
-        sess_file = `${self.sessionDir}${self.ds}${self.prefix}${sessid}`;
+        sess_file = `${self.sessionDir}${self.ds}${self.prefix}${sessid}`
         c._sessFile = sess_file
 
         await new Promise((rv, rj) => {
           fs.readFile(sess_file, (err, data) => {
             if (err) {
-              rj(err);
+              rj(err)
             } else {
-              sess_state = true;
-              rv(data);
+              sess_state = true
+              rv(data)
             }
-          });
+          })
         }).then(data => {
-          //c.sessionText = data;
-          c._session = JSON.parse(data);
+          c._session = JSON.parse(data)
         }, err => {
-          sess_state = false;
-        }).catch(err => {});
+          sess_state = false
+        }).catch(err => {
+          self.error = err
+        })
       }
 
       if (sessid === undefined || sess_state === false) {
 
-        var org_name = `${c.host}_${Date.now()}__${Math.random()}`;
-        var hash = crypto.createHash('sha1');
-        hash.update(org_name);
+        var org_name = `${c.host}_${Date.now()}__${Math.random()}`
 
-        sessid = hash.digest('hex');
+        var hash = crypto.createHash('sha1')
+
+        hash.update(org_name)
+
+        sessid = hash.digest('hex')
   
-        sess_file = self.prefix + sessid;
+        sess_file = self.prefix + sessid
   
-        var set_cookie = `${self.sessionKey}=${sessid};`;
+        var set_cookie = `${self.sessionKey}=${sessid};`
 
         if (self.expires) {
-          var t = new Date(Date.now() + self.expires *1000);
-          set_cookie += `Expires=${t.toString()};`;
+          var t = new Date(Date.now() + self.expires * 1000)
+          set_cookie += `Expires=${t.toString()};`
         }
   
-        set_cookie += `Path=${self.path};`;
+        set_cookie += `Path=${self.path};`
   
         if (self.domain) {
-          set_cookie += `Domain=${self.domain}`;
+          set_cookie += `Domain=${self.domain}`
         }
   
-        var session_path_file = `${self.sessionDir}/${sess_file}`;
+        var session_path_file = `${self.sessionDir}/${sess_file}`
 
-        c._sessFile = session_path_file;
+        c._sessFile = session_path_file
 
         await new Promise((rv, rj) => {
           fs.writeFile(session_path_file, '{}', err => {
             if (err) {
-              rj(err);
+              rj(err)
             } else {
-              rv(true);
+              rv(true)
             }
-          });
+          })
         }).then(data => {
-          c.setHeader('Set-Cookie', set_cookie);
-        }, err => {});
+          c.setHeader('set-cookie', set_cookie)
+        }, err => {
+          self.error = err
+        })
 
       }
 
-      await next();
+      await next()
 
       if (c._sessionState) {
-        var tmpText = JSON.stringify(c._session);
-        fs.writeFile(c._sessFile, tmpText, (err) => {});
+        let tmpText = JSON.stringify(c._session)
+        fs.writeFile(c._sessFile, tmpText, (err) => {
+          self.error = err
+        })
       }
       
-      c._session = null;
+      c._session = null
 
-    };
+    }
 
   }
 
-  
-
 }
 
-module.exports = session;
+module.exports = session

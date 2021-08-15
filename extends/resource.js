@@ -102,26 +102,26 @@ class staticdata {
     }
 
     this.ctypeMap = {
-      'css' : 'text/css; charset=utf-8',
-      'js'  : 'text/javascript; charset=utf-8',
-      'txt' : 'text/plain; charset=utf-8',
-      'json' : 'text/json; charset=utf-8',
+      '.css' : 'text/css; charset=utf-8',
+      '.js'  : 'text/javascript; charset=utf-8',
+      '.txt' : 'text/plain; charset=utf-8',
+      '.json' : 'text/json; charset=utf-8',
 
-      'jpg' : 'image/jpeg',
-      'jpeg' : 'image/jpeg',
-      'png' : 'image/png',
-      'gif' : 'image/gif',
-      'ico' : 'image/x-icon',
-      'webp' : 'image/webp',
+      '.jpg' : 'image/jpeg',
+      '.jpeg' : 'image/jpeg',
+      '.png' : 'image/png',
+      '.gif' : 'image/gif',
+      '.ico' : 'image/x-icon',
+      '.webp' : 'image/webp',
 
-      'mp3' : 'audio/mp3',
-      'mp4' : 'video/mp4',
+      '.mp3' : 'audio/mp3',
+      '.mp4' : 'video/mp4',
 
-      'ttf' : 'font/ttf',
-      'wtf' : 'font/wtf',
-      'woff' : 'font/woff',
-      'woff2' : 'font/woff2',
-      'ttc' : 'font/ttc'
+      '.ttf' : 'font/ttf',
+      '.wtf' : 'font/wtf',
+      '.woff' : 'font/woff',
+      '.woff2' : 'font/woff2',
+      '.ttc' : 'font/ttc'
     }
 
   }
@@ -132,13 +132,12 @@ class staticdata {
     let extstart = filename.length - 5
 
     while (extind > 0 && extind >= extstart) {
-      if (filename[extind] === '.')
-        break
+      if (filename[extind] === '.') break
 
       extind -= 1
     }
 
-    let extname = filename.substring(extind+1)
+    let extname = filename.substring(extind)
 
     if (this.ctypeMap[extname] !== undefined) {
       return this.ctypeMap[extname]

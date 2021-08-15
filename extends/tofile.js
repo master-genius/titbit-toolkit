@@ -30,35 +30,37 @@ class tofile {
           return null
         }
 
+        let flist = c.files[name]
+
         if (ind < 0) {
-          for (let i = 0; i < c.files[name].length; i++) {
-            if (c.files[name][i].toFile === undefined) {
-              c.files[name][i].toFile = async (target, filename = null) => {
+          for (let i = 0; i < flist.length; i++) {
+            if (flist[i].toFile === undefined) {
+              flist[i].toFile = async (target, filename = null) => {
                 if (filename === null) {
-                  filename = c.helper.makeName(c.files[name][i].filename)
+                  filename = c.helper.makeName(flist[i].filename)
                 }
-                await c.moveFile(c.files[name][i], `${target}/${filename}`)
+                await c.moveFile(flist[i], `${target}/${filename}`)
                 return filename
               }
             }
           }
-          return c.files[name]
+          return flist
         }
 
-        if (c.files[name][ind].toFile === undefined) {
-          c.files[name][ind].toFile = async (target, filename = null) => {
+        if (flist[ind].toFile === undefined) {
+          flist[ind].toFile = async (target, filename = null) => {
 
             if (filename === null) {
-              filename = c.helper.makeName(c.files[name][ind].filename)
+              filename = c.helper.makeName(flist[ind].filename)
             }
 
-            await c.moveFile(c.files[name][ind], `${target}/${filename}`)
+            await c.moveFile(flist[ind], `${target}/${filename}`)
 
             return filename
           }
         }
 
-        return c.files[name][ind]
+        return flist[ind]
 
       }
 

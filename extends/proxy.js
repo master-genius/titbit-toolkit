@@ -3,7 +3,6 @@
 const urlparse = require('url');
 const http = require('http');
 const https = require('https');
-const { setInterval } = require('timers');
 
 /**
  * {
@@ -33,6 +32,8 @@ class proxy {
 
     this.pathTable = {};
 
+    this.config = {};
+
     this.urlpreg = /(unix|http|https):\/\/[a-zA-Z0-9\-\_]+/;
 
     this.maxBody = 50000000;
@@ -41,8 +42,6 @@ class proxy {
     this.full = false;
 
     this.timeout = 10000;
-
-    this.starPath = false;
 
     this.addIP = false;
 
@@ -86,17 +85,14 @@ class proxy {
     for (let k in options) {
       switch (k) {
         case 'host':
-          this.setHostProxy(options[k]);
+        case 'config':
+          this.config = options[k];
           break;
 
         case 'maxBody':
           if (typeof options[k] == 'number' && parseInt(options[k]) >= 0) {
             this.maxBody = parseInt(options[k]);
           }
-          break;
-
-        case 'starPath':
-          this.starPath = options[k];
           break;
       
         case 'full':
@@ -116,6 +112,8 @@ class proxy {
         default:;
       }
     }
+
+    this.setHostProxy(this.config);
 
   }
 
@@ -330,9 +328,9 @@ class proxy {
     return u;
   }
 
-  getBackend (c) {
-    let prlist = this.hostProxy[c.host][c.routepath];
-    let pb = this.proxyBalance[c.host][c.routepath];
+  getBackend (c, host) {
+    let prlist = this.hostProxy[host][c.routepath];
+    let pb = this.proxyBalance[host][c.routepath];
     let pr;
 
     if (prlist.length === 1) {
@@ -351,6 +349,8 @@ class proxy {
         } else {
           pr.weightCount += 1;
         }
+      } else {
+        pb.stepIndex += 1;
       }
     }
 
@@ -375,36 +375,42 @@ class proxy {
     timeoutError.code = 'ETIMEOUT';
 
     return async (c, next) => {
+
+      let host = c.host;
+
+      let hind = c.host.length - 1;
+
+      if (hind > 4) {
+        let eind = hind - 5;
+  
+        while (hind >= eind) {
+          if (c.host[hind] === ':') {
+            host = c.host.substring(0, hind);
+            break;
+          }
+    
+          hind -= 1;
+        }
+      }
       
-      if (self.hostProxy[c.host]===undefined || self.hostProxy[c.host][c.routepath]===undefined) {
+      if (self.hostProxy[host]===undefined || self.hostProxy[host][c.routepath]===undefined) {
         if (self.full) {
-          c.status(502);
-          c.send(self.error['502']);
+          c.send(self.error['502'], 502);
           return;
         }
         return await next();
       }
 
-      let pr = self.getBackend(c);
+      let pr = self.getBackend(c, host);
 
       if (pr === null) {
-        c.status(503);
-        c.send(self.error['503']);
+        c.send(self.error['503'], 503);
         return;
       }
 
       let urlobj = self.copyUrlobj(pr.urlobj);
 
-      if (self.starPath) {
-        urlobj.path = `/${c.param.starPath}`;
-        let qind = c.request.url.indexOf('?');
-        if ( qind > 0) {
-          urlobj.path += c.request.url.substring(qind);
-        }
-      } else {
-        urlobj.path = c.request.url;
-      }
-
+      urlobj.path = c.request.url;
       urlobj.headers = c.headers;
       urlobj.method = c.method;
 
@@ -458,8 +464,7 @@ class proxy {
         });
     
       }).catch(err => {
-        c.status(503);
-        c.send(self.error['503']);
+        c.send(self.error['503'], 503);
       });
 
     };
@@ -521,10 +526,10 @@ class proxy {
     app.config.timeout = this.timeout;
 
     for (let p in this.pathTable) {
-      app.router.map(this.methods, p, async c => {}, '@_t_proxy_');
+      app.router.map(this.methods, p, async c => {}, '@titbit_proxy');
     }
 
-    app.use(this.midhost(), {pre: true, group: `_t_proxy_`});
+    app.use(this.midhost(), {pre: true, group: `titbit_proxy`});
 
     for (let k in this.hostProxy) {
 
