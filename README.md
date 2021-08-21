@@ -365,8 +365,7 @@ http://b.com/xyz/
 
 let load_balance_cfg = {
 
-    //端口必须和监听一致。如果监听80或443（http和https默认端口）则不需要携带端口号。
-    'a.com:1234' : [
+    'a.com' : [
         {
             path : '/',
             url : 'http://localhost:1234',
@@ -561,7 +560,7 @@ let filepath = './images/a.jpg'
 
 app.get('/image', async c => {
   //中间件扩展启用后，会在box属性上挂载pipe函数。
-  await c.box.pipe(filepath)
+  await c.box.pipe(filepath, c.reply)
 })
 
 app.run(1234)
