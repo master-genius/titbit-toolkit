@@ -8,11 +8,11 @@ class pipe {
 
   }
 
-  async filePipe (filename) {
+  async filePipe (filename, wstm) {
     let fread = fs.createReadStream(filename)
     
     return new Promise((rv, rj) => {
-      fread.pipe(c.reply)
+      fread.pipe(wstm)
 
       fread.on('error', err => {
         rj(err)
@@ -38,3 +38,4 @@ class pipe {
 }
 
 module.exports = pipe
+
