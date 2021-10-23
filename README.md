@@ -684,7 +684,7 @@ let h2m = new http2limit({
   //时间片5000毫秒
   timeSlice: 5000,
 
-  //每个IP:PORT timeSlice 限制时间片内可以访问10次数。
+  //每个IP:PORT timeSlice 限制时间片内可以访问10次。
   maxRequest: 10,
 
   //套接字生命期限：10分钟（毫秒单位），无论请求是否结束，超时即关闭。
