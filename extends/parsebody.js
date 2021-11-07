@@ -22,12 +22,16 @@ class parsebody {
 
       let ctype = c.headers['content-type'] || '';
 
-      if (ctype.indexOf('text/json') === 0) {
-        c.body = JSON.parse(c.body);
-      } else if (ctype.indexOf('application/json') === 0) {
-        c.body = JSON.parse(c.rawBody.toString('utf8'));
+      try {
+        if (ctype.indexOf('text/json') === 0) {
+          c.body = JSON.parse(c.body);
+        } else if (ctype.indexOf('application/json') === 0) {
+          c.body = JSON.parse(c.rawBody.toString('utf8'));
+        }
+      } catch (err) {
+        return c.status(400).send('bad data: illegal json data.')
       }
-
+      
       await next();
     }
   }
