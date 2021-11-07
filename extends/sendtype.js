@@ -16,7 +16,7 @@ class sendtype {
   }
 
   json (data) {
-    this.sendType(data 'application/json')
+    this.sendType(data, 'application/json')
   }
 
   xml (data) {
