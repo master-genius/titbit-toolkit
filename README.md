@@ -197,11 +197,8 @@ let cr = new cors({
     //OPTIONS请求缓存60秒，此期间浏览器请求会先去读取缓存。
     optionsCache: 60,
 
-    //默认为null，可以设置自定义的消息头。
-    //如果要在前端使用authorization传递会话验证的token则需要以下选项。
-    headers : {
-        'access-control-request-headers' : '*'
-    }
+    //默认为'*'，可以设置允许的请求方法。
+    //requestHeaders : '*'
 
 })
 
