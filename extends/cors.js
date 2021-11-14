@@ -31,6 +31,9 @@ class cors {
 
     this.requestHeaders = '*';
 
+    //Access-Control-Expose-Headers 指定哪些消息头可以暴露给请求端。
+    this.exposeHeaders = '';
+
     this.methods = [
       'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'
     ];
@@ -80,6 +83,10 @@ class cors {
           this.allowHeaders = options[k];
           break;
 
+        case 'exposeHeaders':
+          this.exposeHeaders = options[k];
+          break;
+
       }
     }
 
@@ -123,7 +130,12 @@ class cors {
             c.setHeader('access-control-allow-origin', '*');
             c.setHeader('access-control-allow-methods', self.methodString);
             c.setHeader('access-control-allow-headers', self.allowHeaders);
+            //服务端也要包含此消息头。
             c.setHeader('access-control-request-headers', self.requestHeaders);
+
+            if (self.exposeHeaders)
+              c.setHeader('access-control-expose-headers', self.exposeHeaders);
+
             //method is OPTIONS
             if (c.method[0] === 'O') {
               self.optionsCache && c.setHeader('access-control-max-age', self.optionsCache);

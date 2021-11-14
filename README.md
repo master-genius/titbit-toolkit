@@ -200,15 +200,17 @@ let cr = new cors({
     //默认为'*'，可以设置允许的请求方法。
     //requestHeaders : '*'
 
+    //默认为''，表示哪些消息头可以暴露给请求端，多个消息头使用 , 分隔。
+    //exposeHeaders: 'x-test-key,x-type'
+
 })
 
-app.use(cr.mid())
+app.pre(cr)
 
 //支持OPTIONS请求，因为浏览器在处理一些POST和PUT请求以及DELETE请求时会先发送OPTIONS预检请求。
 //如果没有OPTIONS请求，则跨域支持不完整。
-app.options('/*', async c => {
-
-})
+//在titbit-loader 22.0.1+版本开始，支持默认自动添加OPTIONS路由。
+app.options('/*', async c => {})
 
 ```
 
