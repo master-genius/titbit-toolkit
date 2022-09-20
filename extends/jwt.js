@@ -29,7 +29,7 @@ const crypto = require('crypto')
 class jwt {
 
   constructor (options = {}) {
-    this.timeout = 3600000
+    this.expires = 3600000
     this.autoTimeout = true
     this.header = ''
 
@@ -84,7 +84,7 @@ class jwt {
 
     for (let k in options) {
       switch(k) {
-        case 'timeout':
+        case 'expires':
         case 'autoTimeout':
         case 'alg':
         case 'key':
@@ -104,7 +104,7 @@ class jwt {
   make (data) {
     if (typeof data === 'object') {
       if (this.autoTimeout) {
-        data.__timeout__ = Date.now() + this.timeout
+        data.__timeout__ = Date.now() + this.expires
       }
 
       data = JSON.stringify(data)
