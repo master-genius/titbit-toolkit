@@ -646,7 +646,7 @@ let s = new sse({
 s.handle = (ctx) => {
     ctx.sendmsg({event: 'eat', data: '饭'})
     if (Date.now() % 5 === 0) {
-        //发送多条消息
+        //发送多条消息，字符串或数字会自动转换为对应的消息格式，事件为message。
         ctx.sendmsg([
             {event: 'clock', data: Date.now()},
             '但愿人长久，千里共婵娟。',
@@ -675,10 +675,80 @@ app.run(1234)
 sse的中间件扩展提供ctx.sendmsg方法用于发送消息。
 
 **前端页面示例：**
+
+> \<script\>
 > let es = new EventSource('/sse')
 > es.addEventListener('message', e => { console.log(e.data) })
 > es.addEventListener('clock', e => { console.log(e.data) })
 > es.addEventListener('eat', e => { console.log(e.data) })
+
+> \</script\>
+
+**SSE的运行模式**
+
+默认运行模式为 定时器 模式，如果需要更精确的，或者说可以动态调整的时间间隔，可以使用生成器模式。
+
+**注意：在生成器模式，你可以把timeSlice设置为0，此时会不断的执行处理函数，这时候你必须要在处理函数内部进行延迟处理，否则频繁的循环会导致CPU占有率居高不下。**
+
+```javascript
+
+const Titbit = require('titbit')
+const {sse} = require('titbit-toolkit')
+
+let s = new sse({
+  //超时20秒，超过此时间后会自动关闭连接
+  timeout: 20000,
+
+  //重新发起连接时间，关闭连接后告诉浏览器多长时间后再次发起连接。
+  //默认值为0表示不再发起连接。
+  retry: 5000,
+
+  //定时器间隔，每隔10毫秒执行一次处理函数。
+  timeSlice: 10,
+
+  //mode默认为timer，传递 yield 或 generator 都表示开启生成器模式。
+  mode: 'yield'
+})
+
+//设置处理函数，ctx就是请求上下文
+s.handle = (ctx) => {
+    ctx.sendmsg({event: 'eat', data: '饭'})
+    let tm = Date.now()
+
+    if (tm % 5 === 0) {
+        //发送多条消息
+        ctx.sendmsg([
+            {event: 'clock', data: tm},
+            '但愿人长久，千里共婵娟。',
+            Math.random()
+        ])
+    }
+
+    if (tm % 7 === 0) {
+        //延迟500毫秒
+        await ctx.sse.moment(500)
+    } else {
+        //延迟100毫秒
+        await ctx.sse.moment(100)
+    }
+}
+
+//只针对路由分组sse启用中间件。
+app.use( s, {group: 'sse'} )
+
+
+//设定路由所属分组为sse
+app.get('/sse', async ctx => {}, {group: 'sse'})
+
+
+//此路由不会受到sse的影响。
+app.get('/', async ctx => {
+  ctx.send('home')
+})
+
+app.run(1234)
+
+```
 
 
 ## paramcheck(参数检测)

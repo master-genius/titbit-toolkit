@@ -91,6 +91,8 @@ class sse {
     this.handleClose = null
     this.handleError = null
 
+    this.mode = 'timer'
+
     for (let k in options) {
       switch (k) {
         case 'timeSlice':
@@ -105,6 +107,11 @@ class sse {
         case 'handleClose':
         case 'handleError':
           if (typeof options[k] === 'function') this[k] = optionsp[k]
+          break
+
+        case 'mode':
+          if (['timer', 'generator', 'yield'].indexOf(options[k]) >= 0)
+            this[k] = options[k]
           break
       }
     }
@@ -157,6 +164,99 @@ class sse {
 
   }
 
+  async moment (t) {
+    return new Promise((rv) => {
+      setTimeout(rv, t)
+    })
+  }
+
+  gn (ctx) {
+    if (!this.handle || typeof this.handle !== 'function') {
+      throw new Error('请设置handle为要处理的函数，然后再次运行。')
+    }
+
+    let self = this
+
+    ctx.box.sseNext = true
+
+    ctx.reply.on('error', err => {
+      ctx.box.sseNext = false
+      ctx.box.sseError = err
+    })
+
+    ctx.reply.on('close', () => {
+      ctx.box.sseNext = false
+    })
+
+    return async function * () {
+        while (true) {
+          let tm = Date.now()
+
+          if (self.timeout > 0 && (tm - ctx.box.sseTime) > self.timeout) {
+            if (self.retry > 0) {
+              ctx.sendmsg({data: 'timeout', retry: self.retry})
+            }
+            return
+          }
+          ctx.box.sseCount += 1
+          try {
+            await self.handle(ctx)
+          } catch (err) {
+            ctx.box.sseNext = false
+            ctx.box.sseError = err
+          }
+
+          if (ctx.box.sseNext) {
+            yield tm
+          } else {
+            break
+          }
+        }
+    }
+
+  }
+
+  async rungn (ctx) {
+    let yn = this.gn(ctx)
+    let r
+    let y = yn()
+
+    while (true) {
+      r = await y.next()
+      
+      if (r.done) break
+
+      if (this.timeSlice > 0) await this.moment(this.timeSlice)
+    }
+
+    if (ctx.box.sseError) {
+      if (this.handleError && typeof this.handleError === 'function')
+        this.handleError(ctx.box.sseError, ctx)
+      else throw ctx.box.sseError
+    } else if (this.handleClose && typeof this.handleClose === 'function') {
+      this.handleClose(ctx)
+    }
+  }
+
+  autoRun (ctx) {
+    if (this.mode === 'timer') {
+      return this.interval(ctx)
+                .then(data => {
+                  if (typeof this.handleClose === 'function') this.handleClose(ctx)
+                })
+                .catch(err => {
+                  if (typeof this.handleError === 'function') {
+                    this.handleError(err, ctx)
+                  } else {
+                    throw err
+                  }
+                })
+    } else {
+      ctx.box.sseTime = Date.now()
+      return this.rungn(ctx)
+    }
+  }
+
   mid () {
     let self = this
 
@@ -184,18 +284,7 @@ class sse {
         }
       }
 
-      await self.interval(ctx)
-                .then(data => {
-                  if (typeof self.handleClose === 'function') self.handleClose(ctx)
-                })
-                .catch(err => {
-                  if (typeof self.handleError === 'function') {
-                    self.handleError(err, ctx)
-                  } else {
-                    throw err
-                  }
-                })
-
+      await self.autoRun(ctx)
     }
   }
 
