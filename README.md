@@ -674,27 +674,12 @@ app.run(1234)
 
 sse的中间件扩展提供ctx.sendmsg方法用于发送消息。
 
+**前端页面示例：**
+> let es = new EventSource('/sse')
+> es.addEventListener('message', e => { console.log(e.data) })
+> es.addEventListener('clock', e => { console.log(e.data) })
+> es.addEventListener('eat', e => { console.log(e.data) })
 
-创建可读流返回文件内容。对于稍大的文件，使用fs.createReadStream创建可读流会更好。此扩展就是对此功能的封装：
-
-```javascript
-
-const titbit = require('titbit')
-const {pipe} = require('titbit-toolkit')
-
-app.use( new pipe() )
-
-let filepath = './images/a.jpg'
-
-app.get('/image', async c => {
-  //中间件扩展启用后，会在box属性上挂载pipe函数。
-  await c.box.pipe(filepath, c.reply)
-})
-
-app.run(1234)
-
-
-```
 
 ## paramcheck(参数检测)
 
