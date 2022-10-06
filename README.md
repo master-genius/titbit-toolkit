@@ -116,13 +116,13 @@ app.run(1234)
 
 启用session后，在ctx上可以调用：
 
-- setSession(key, data) 设置session。
+- ctx.setSession(key, data) 设置session。
 
-- getSession(key = null) 获取session数据，key默认为null,此时获取所有session数据。
+- ctx.getSession(key = null) 获取session数据，key默认为null,此时获取所有session数据。
 
-- delSession(key) 删除对应key值的session。
+- ctx.delSession(key) 删除对应key值的session。
 
-- clearSession() 清理所有session数据。
+- ctx.clearSession() 清理所有session数据。
 
 
 ## resource(静态资源处理)
@@ -595,7 +595,7 @@ app.run(1234)
 
 ```
 
-## 服务端消息推送 (SSE)
+## SSE(服务端消息推送)
 
 > Server sent events (SSE)
 
