@@ -53,7 +53,7 @@ class jwt {
     })
 
     Object.defineProperty(this, '__alg__', {
-      value: 'HS256',
+      value: 'SM3',
       enumerable: false,
       configurable: false,
       writable: true
