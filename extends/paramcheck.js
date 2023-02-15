@@ -9,10 +9,12 @@ class paramcheck {
 
   constructor (options = {}) {
     this.type = ['query', 'param', 'body']
-
     this.key = 'param'
-
     this.data = {}
+    this.errorMessage = "提交数据不符合要求"
+    //设置禁止提交的字段
+    this.deny = null
+    this.denyMessage = '存在禁止提交的数据'
 
     for (let k in options) {
       switch (k) {
@@ -28,6 +30,21 @@ class paramcheck {
           }
           break
 
+        case 'errorMessage':
+          this[k] = options[k]
+          break
+
+        case 'deny':
+          if (typeof options[k] === 'string') {
+            options[k] = [options[k]]
+          }
+          if (Array.isArray(options[k])) {
+            this.deny = options[k]
+          }
+          break
+
+        default: 
+          this[k] = options[k]
       }
     }
 
@@ -118,31 +135,49 @@ class paramcheck {
   dataFilter (c) {
     let d = c[this.key]
 
-    if (this.key !== 'body' || c.body !== c.rawBody) {
-
+    if (this.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
       for (let k in this.data) {
         if (!this.checkData(d, k, this.data[k])) {
           return false
         }
       }
-
     }
 
     return true
   }
 
   mid () {
-
     let self = this
+
+    if (!Array.isArray(this.deny) || this.deny.length === 0) this.deny = null
+
+    if (this.deny) {
+      return async (c, next) => {
+
+        if (self.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
+          let obj = c[self.key]
+
+          for (let k of self.deny) {
+            if (obj[k] !== undefined) return c.status(400).send(self.denyMessage)
+          }
+        }
+
+        if (!self.dataFilter(c)) {
+          return c.status(400).send(self.errorMessage)
+        }
+
+        await next()
+      }
+      
+    }
 
     return async (c, next) => {
       if (!self.dataFilter(c)) {
-        return c.status(400).send("bad data: request's parameter.")
+        return c.status(400).send(self.errorMessage)
       }
 
       await next()
     }
-
   }
 
 }
