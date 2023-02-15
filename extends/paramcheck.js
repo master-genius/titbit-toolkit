@@ -15,6 +15,7 @@ class paramcheck {
     //设置禁止提交的字段
     this.deny = null
     this.denyMessage = '存在禁止提交的数据'
+    this.deleteDeny = false
 
     for (let k in options) {
       switch (k) {
@@ -43,6 +44,10 @@ class paramcheck {
           }
           break
 
+        case 'deleteDeny':
+          this.deleteDeny = !!options[k]
+          break
+
         default: 
           this[k] = options[k]
       }
@@ -65,7 +70,7 @@ class paramcheck {
    *    - min      最小值，可以 >= 此值，数字或字符串。
    *    - max      最大值，可以 <= 此值，数字或字符串。
    */
-  checkData (obj, k, rule) {
+  checkData (obj, k, rule, method) {
 
     let typ = typeof rule
 
@@ -114,7 +119,7 @@ class paramcheck {
 
       //无论obj[k]是否存在，只要存在callback，就要执行。
       if (rule.callback && typeof rule.callback === 'function') {
-        return (rule.callback(obj, k) === false) ? false : true
+        return (rule.callback(obj, k, method) === false) ? false : true
       }
       
     } else if (typ === 'string') {
@@ -137,7 +142,7 @@ class paramcheck {
 
     if (this.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
       for (let k in this.data) {
-        if (!this.checkData(d, k, this.data[k])) {
+        if (!this.checkData(d, k, this.data[k], c.method)) {
           return false
         }
       }
@@ -152,6 +157,26 @@ class paramcheck {
     if (!Array.isArray(this.deny) || this.deny.length === 0) this.deny = null
 
     if (this.deny) {
+      if (this.deleteDeny) {
+        return async (c, next) => {
+
+          if (self.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
+            let obj = c[self.key]
+
+            for (let k of self.deny) {
+              if (obj[k] !== undefined) delete obj[k]
+            }
+          }
+
+          if (!self.dataFilter(c)) {
+            return c.status(400).send(self.errorMessage)
+          }
+
+          await next()
+        }
+
+      }
+
       return async (c, next) => {
 
         if (self.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
