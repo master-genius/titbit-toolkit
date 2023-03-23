@@ -201,7 +201,7 @@ class cors {
        //使用c.box.corsAllow控制，给中间件处理留出扩展空间。
       //跨域请求，必须存在origin。
       if (c.headers.origin) {
-          if (!self.allow === '*' || self.allowTable[c.headers.origin] || c.box.corsAllow) {
+          if (!(self.allow === '*' || self.allowTable[c.headers.origin] || c.box.corsAllow) ) {
             return;
           }
       } else {
