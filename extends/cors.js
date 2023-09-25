@@ -32,7 +32,9 @@ class cors {
     
     this.allow = '*';
     
-    this.allowHeaders = 'content-type';
+    this.allowHeaders = 'authorization,content-type';
+
+    this.allowHeaderTable = {};
 
     this.requestHeaders = '*';
 
@@ -107,7 +109,21 @@ class cors {
           break;
 
         case 'allowHeaders':
-          this.allowHeaders = options[k];
+          if (Array.isArray(options[k])) {
+            if (options[k].length > 0)
+              this.allowHeaders = options[k].join(',');
+          } else if (typeof options[k] === 'string') {
+            this.allowHeaders = options[k].trim() || '*';
+          }
+
+          /* if (this.allowHeaders !== '*') {
+            this.allowHeaders.split(',')
+                .filter(p => p.length > 0)
+                .map(x => x.trim())
+                .forEach(x => {
+                  this.allowHeaderTable[x] = x;
+                });
+          } */
           break;
 
         case 'exposeHeaders':
@@ -241,6 +257,15 @@ class cors {
        
       }
 
+      let req_headers = c.headers['access-control-request-headers'];
+      if (req_headers && req_headers.indexOf('x-credentials') >= 0) {
+        //如果前端使用了credentials为include选项，同时使用x-credentials消息头通知后台，此时要做特殊处理。
+        c.headers['x-credentials'] = 'include';
+        //c.setHeader('access-control-request-headers', req_headers);
+      }
+      //服务端也要包含此消息头。
+      c.setHeader('access-control-request-headers', self.requestHeaders);
+
       if (self.credentials || c.headers['x-credentials'] === 'include') {
         let host = '*';
         if (c.headers.origin) {
@@ -261,8 +286,6 @@ class cors {
 
       c.setHeader('access-control-allow-methods', self.methodString);
       c.setHeader('access-control-allow-headers', self.allowHeaders);
-      //服务端也要包含此消息头。
-      c.setHeader('access-control-request-headers', self.requestHeaders);
 
       if (self.exposeHeaders)
         c.setHeader('access-control-expose-headers', self.exposeHeaders);
