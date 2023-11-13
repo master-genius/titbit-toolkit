@@ -38,11 +38,6 @@ class session {
 
   }
 
-  init(app) {
-    let hserv = app.httpServ
-    hserv.prototype.sessionError = function ()
-  }
-
   mid () {
     let self = this
 
