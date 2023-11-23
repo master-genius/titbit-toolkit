@@ -50,7 +50,7 @@ class cors {
     this.referer = '';
 
     this.methods = [
-      'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS'
+      'GET', 'POST', 'DELETE', 'PUT', 'OPTIONS', 'PATCH', 'HEAD'
     ];
 
     if (typeof options !== 'object') {
