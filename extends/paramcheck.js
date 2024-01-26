@@ -70,13 +70,16 @@ class paramcheck {
    *    - min      最小值，可以 >= 此值，数字或字符串。
    *    - max      最大值，可以 <= 此值，数字或字符串。
    */
-  checkData (obj, k, rule, method) {
-
+  checkData (obj, k, rule, method, ost) {
     let typ = typeof rule
+
+    ost.ok = true
+    ost.key = k
 
     if (typ === 'object') {
       if (obj[k] === undefined) {
         if (rule.must) {
+          ost.ok = false
           return false
         }
         
@@ -89,6 +92,7 @@ class paramcheck {
         //数据初始必然是字符串，转换只能是整数或浮点数或boolean。
         if (rule.to) {
           if (isNaN(obj[k])) {
+            ost.ok = false
             return false
           }
 
@@ -109,27 +113,32 @@ class paramcheck {
         }
 
         if (rule.min !== undefined && obj[k] < rule.min) {
+          ost.ok = false
           return false
         }
 
         if (rule.max !== undefined && obj[k] > rule.max) {
+          ost.ok = false
           return false
         }
       }
 
       //无论obj[k]是否存在，只要存在callback，就要执行。
       if (rule.callback && typeof rule.callback === 'function') {
+        ost.ok = false
         return (rule.callback(obj, k, method) === false) ? false : true
       }
       
     } else if (typ === 'string') {
       
       if (obj[k] === undefined || obj[k] !== rule) {
+        ost.ok = false
         return false
       }
 
     } else if (typ === 'number') {
       if (obj[k] === undefined || obj[k] != rule) {
+        ost.ok = false
         return false
       }
     }
@@ -139,20 +148,22 @@ class paramcheck {
 
   dataFilter (c) {
     let d = c[this.key]
+    let ost = {ok: true, key: ''}
 
     if (this.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
       for (let k in this.data) {
-        if (!this.checkData(d, k, this.data[k], c.method)) {
-          return false
+        if (!this.checkData(d, k, this.data[k], c.method, ost)) {
+          return ost
         }
       }
     }
 
-    return true
+    return ost
   }
 
   mid () {
     let self = this
+    let dataObject = this.data
 
     if (!Array.isArray(this.deny) || this.deny.length === 0) this.deny = null
 
@@ -168,8 +179,9 @@ class paramcheck {
             }
           }
 
-          if (!self.dataFilter(c)) {
-            return c.status(400).send(self.errorMessage)
+          let r = self.dataFilter(c)
+          if (!r.ok) {
+            return c.status(400).send(dataObject[r.key].errorMessage || self.errorMessage)
           }
 
           await next()
@@ -178,7 +190,6 @@ class paramcheck {
       }
 
       return async (c, next) => {
-
         if (self.key !== 'body' || (c.body !== c.rawBody && typeof c.body === 'object')) {
           let obj = c[self.key]
 
@@ -187,8 +198,9 @@ class paramcheck {
           }
         }
 
-        if (!self.dataFilter(c)) {
-          return c.status(400).send(self.errorMessage)
+        let r = self.dataFilter(c)
+        if (!r.ok) {
+          return c.status(400).send(dataObject[r.key].errorMessage || self.errorMessage)
         }
 
         await next()
@@ -197,8 +209,9 @@ class paramcheck {
     }
 
     return async (c, next) => {
-      if (!self.dataFilter(c)) {
-        return c.status(400).send(self.errorMessage)
+      let r = self.dataFilter(c)
+      if (!r.ok) {
+        return c.status(400).send(dataObject[r.key].errorMessage || self.errorMessage)
       }
 
       await next()
