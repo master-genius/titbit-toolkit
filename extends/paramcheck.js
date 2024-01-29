@@ -5,6 +5,9 @@
  * 支持声明式的设计，避免重复劳动。
  */
 
+let TYPE_STRING = 1
+let TYPE_NUMBER = 2
+
 class paramcheck {
 
   constructor (options = {}) {
@@ -53,6 +56,29 @@ class paramcheck {
       }
     }
 
+    let data_type = ''
+    for (let k in this.data) {
+      data_type = typeof this.data[k]
+
+      if (data_type === 'string' || data_type === 'number') {
+        this.data[k] = {
+          __is_value__: true,
+          __value__: this.data[k],
+          __type__: data_type === 'string' ? TYPE_STRING : TYPE_NUMBER
+        }
+
+        continue
+      }
+
+      this.data[k].__is_value__ = false
+
+      if (this.data[k].callback && typeof this.data[k].callback === 'function') {
+        this.data[k].__is_call__ = true
+      } else {
+        this.data[k].__is_call__ = false
+      }
+    }
+
   }
 
   /**
@@ -76,68 +102,69 @@ class paramcheck {
     ost.ok = true
     ost.key = k
 
-    if (typ === 'object') {
-      if (obj[k] === undefined) {
-        if (rule.must) {
-          ost.ok = false
-          return false
-        }
-        
-        if (rule.default !== undefined) {
-          obj[k] = rule.default
-          return true
-        }
+    if (!rule.__is_value__) {
+        if (obj[k] === undefined) {
+          if (rule.must) {
+            ost.ok = false
+            return false
+          }
+          
+          if (rule.default !== undefined) {
+            obj[k] = rule.default
+            return true
+          }
 
-      } else {
-        //数据初始必然是字符串，转换只能是整数或浮点数或boolean。
-        if (rule.to) {
-          if (isNaN(obj[k])) {
+        } else {
+          //数据初始必然是字符串，转换只能是整数或浮点数或boolean。
+          if (rule.to) {
+            if (isNaN(obj[k])) {
+              ost.ok = false
+              return false
+            }
+
+            switch(rule.to) {
+              case 'int':
+                obj[k] = parseInt(obj[k])
+                break
+
+              case 'float':
+                obj[k] = parseFloat(obj[k])
+                break
+              
+              case 'boolean':
+              case 'bool':
+                obj[k] = obj[k] === 'true' ? true : false
+                break
+            }
+          }
+
+          if (rule.min !== undefined && obj[k] < rule.min) {
             ost.ok = false
             return false
           }
 
-          switch(rule.to) {
-            case 'int':
-              obj[k] = parseInt(obj[k])
-              break
-
-            case 'float':
-              obj[k] = parseFloat(obj[k])
-              break
-            
-            case 'boolean':
-            case 'bool':
-              obj[k] = obj[k] === 'true' ? true : false
-              break
+          if (rule.max !== undefined && obj[k] > rule.max) {
+            ost.ok = false
+            return false
           }
         }
 
-        if (rule.min !== undefined && obj[k] < rule.min) {
+        //无论obj[k]是否存在，只要存在callback，就要执行。
+        if (rule.__is_call__) {
+          if (rule.callback(obj, k, method) !== false) {
+            return true
+          }
           ost.ok = false
           return false
         }
-
-        if (rule.max !== undefined && obj[k] > rule.max) {
-          ost.ok = false
-          return false
-        }
-      }
-
-      //无论obj[k]是否存在，只要存在callback，就要执行。
-      if (rule.callback && typeof rule.callback === 'function') {
-        ost.ok = false
-        return (rule.callback(obj, k, method) === false) ? false : true
-      }
       
-    } else if (typ === 'string') {
-      
-      if (obj[k] === undefined || obj[k] !== rule) {
+    } else if (rule.__type__ === TYPE_STRING) {
+      if (obj[k] === undefined || obj[k] !== rule.__value__) {
         ost.ok = false
         return false
       }
-
-    } else if (typ === 'number') {
-      if (obj[k] === undefined || obj[k] != rule) {
+    } else if (rule.__type__ === TYPE_NUMBER) {
+      if (obj[k] === undefined || obj[k] != rule.__value__) {
         ost.ok = false
         return false
       }
