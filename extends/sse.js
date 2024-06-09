@@ -170,7 +170,7 @@ class SSE {
     })
   }
 
-  gn (ctx) {
+  gn(ctx) {
     if (!this.handle || typeof this.handle !== 'function') {
       throw new Error('请设置handle为要处理的函数，然后再次运行。')
     }

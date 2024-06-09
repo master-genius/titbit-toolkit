@@ -48,7 +48,7 @@ let _typemap = {
 
 class staticdata {
 
-  constructor (options = {}) {
+  constructor(options = {}) {
 
     this.cache = new Map()
 
@@ -165,7 +165,7 @@ class staticdata {
 
   }
 
-  addType (tobj) {
+  addType(tobj) {
     let lower_name, up_name;
 
     for (let k in tobj) {
@@ -179,7 +179,7 @@ class staticdata {
     }
   }
 
-  extName (filename) {
+  extName(filename) {
     let extind = filename.length - 1
     let extstart = filename.length - 5
 
@@ -192,7 +192,7 @@ class staticdata {
     return filename.substring(extind)
   }
 
-  filetype (extname) {
+  filetype(extname) {
 
     if (this.ctypeMap[extname] !== undefined) {
       return this.ctypeMap[extname]
@@ -207,7 +207,7 @@ class staticdata {
     this.cache.clear()
   }
 
-  async pipeData (pathfile, ctx, filesize) {
+  async pipeData(pathfile, ctx, filesize) {
     let stm = fs.createReadStream(pathfile)
     let dataBuffer = []
     let total = 0
@@ -244,7 +244,7 @@ class staticdata {
 
   }
 
-  mid () {
+  mid() {
     let self = this
 
     return async (c, next) => {
@@ -363,7 +363,7 @@ class staticdata {
 
   }
 
-  init (app, group = null) {
+  init(app, group = null) {
     app.get(this.routePath, async c => {}, {group: group || this.routeGroup})
     app.use(this.mid(), {group : group || this.routeGroup})
   }
