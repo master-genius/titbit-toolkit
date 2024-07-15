@@ -40,6 +40,10 @@ let _typemap = {
   '.woff' : 'font/woff',
   '.ttc'  : 'font/ttc',
   '.woff2' : 'font/woff2',
+
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
 /**
