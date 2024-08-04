@@ -26,4 +26,3 @@ for (let i = 0; i < files.length; i++) {
 
 }
 
-console.log(exports)
