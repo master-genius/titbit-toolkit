@@ -5,8 +5,8 @@
 目前所有扩展组件都是中间件形式，初始化后运行mid()返回中间件，所以通用的使用形式如下：
 
 ``` JavaScript
-
-let t = new timing()
+const {Timing} = require('titbit-toolkit')
+let t = new Timing()
 app.use( t.mid() )
 
 ```
@@ -24,11 +24,11 @@ app.use( t.mid() )
 ```javascript
 
 const titbit = require('titbit')
-const {tofile} = require('titbit-toolkit')
+const {ToFile} = require('titbit-toolkit')
 
 const app = new titbit()
 
-app.use( new tofile() )
+app.use( new ToFile() )
 
 ```
 
@@ -92,11 +92,11 @@ app.run(1234)
 ``` JavaScript
 
 const Titbit = require('titbit')
-const {cookie, session} = require('titbit-toolkit')
+const {Cookie, Session} = require('titbit-toolkit')
 
 const app = new Titbit({ debug: true })
 
-app.use( new cookie() ).use( new session() )
+app.use( new Cookie() ).use( new Session() )
 
 app.get('/', async ctx => {
   console.log(ctx.cookie)
