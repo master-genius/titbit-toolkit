@@ -1,5 +1,6 @@
 'use strict'
 
+const cluster = require('node:cluster')
 const fs = require('node:fs')
 const fsp = fs.promises
 
@@ -124,6 +125,8 @@ class ErrorLog {
 
   async initLogStream() {
     if (this.flog) return;
+    if (!(cluster.isPrimary || this.selfLog)) return;
+
     try {
       this.flog = fs.createWriteStream(this.logfile, {flags: 'a+', mode: 0o644})
 
