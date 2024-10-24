@@ -78,6 +78,17 @@ class ErrorLog {
     this.logname = this.prefix + 'now.log'
     this.logfile = this.dir + '/' + this.logname
 
+    this.initDirAndHistory()
+
+    this.count = 0
+    this.checkLock = false
+
+    this.initLogStream()
+  }
+
+  initDirAndHistory() {
+    if (!(cluster.isPrimary || this.selfLog)) return false;
+
     try {
       fs.accessSync(this.dir)
     } catch (err) {
@@ -104,11 +115,6 @@ class ErrorLog {
     } catch (err) {
       this.debug && console.error(err)
     }
-
-    this.count = 0
-    this.checkLock = false
-
-    this.initLogStream()
   }
 
   /**
@@ -116,6 +122,10 @@ class ErrorLog {
    * @param {object} app - Titbit实例
    */
   init(app) {
+    if (app.strong && typeof app.strong === 'object') {
+      app.strong.errorHandle = this.sendErrorLog.bind(this)
+    }
+
     if (app.isWorker) {
       app.addService('sendErrorLog', this.sendErrorLog.bind(this))
     } else {
