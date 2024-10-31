@@ -96,7 +96,12 @@ const {Cookie, Session} = require('titbit-toolkit')
 
 const app = new Titbit({ debug: true })
 
-app.use( new Cookie() ).use( new Session() )
+let sess = new Session()
+
+//初始化：给请求上下文添加原型方法
+sess.init(app)
+
+app.use( new Cookie() ).use( sess )
 
 app.get('/', async ctx => {
   console.log(ctx.cookie)
