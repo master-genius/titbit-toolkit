@@ -433,10 +433,13 @@ class Proxy {
       let pr = self.getBackend(c, host)
 
       if (pr === null) {
-        await new Promise((rv, rj) => {setTimeout(rv, 100)})
-        pr = self.getBackend(c, host)
+        for (let i = 0; i < 200; i++) {
+          await new Promise((rv, rj) => {setTimeout(rv, 10)})
+          pr = self.getBackend(c, host)
+          if (pr) break
+        }
 
-        if (pr === null)
+        if (!pr)
           return c.status(503).send(self.error['503'])
       }
 
@@ -564,7 +567,7 @@ class Proxy {
       pxy.alive = true
 
       res.on('error', err => {
-        pxy.alive = false
+        //pxy.alive = false
       })
 
       res.on('data', chunk => {
