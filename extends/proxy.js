@@ -399,7 +399,7 @@ class Proxy {
     return pr
   }
 
-  midhost() {
+  mid() {
     let self = this
     let timeoutError = new Error('request timeout')
     timeoutError.code = 'ETIMEOUT'
@@ -559,7 +559,7 @@ class Proxy {
     let h = http
 
     let opts = {
-      timeout : this.timeout,
+      timeout : this.timeout + 30_000,
       method: 'TRACE',
       headers: {
         'user-agent': 'Node.js/Titbit,Titbit-Toolkit: Proxy,AliveCheck'
@@ -637,7 +637,7 @@ class Proxy {
       app.router.map(this.methods, p, async c => {}, '@titbit_proxy')
     }
 
-    app.use(this.midhost(), {pre: true, group: `titbit_proxy`})
+    app.use(this.mid(), {pre: true, group: `titbit_proxy`})
 
     for (let k in this.hostProxy) {
 
