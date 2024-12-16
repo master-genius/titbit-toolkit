@@ -41,7 +41,7 @@ class Proxy {
     //是否启用全代理模式。
     this.full = false
 
-    this.timeout = 10000
+    this.timeout = 15000
 
     this.addIP = false
 
@@ -476,16 +476,27 @@ class Proxy {
 
       let h = hci.request(urlobj)
 
-      h.on('timeout', () => {
-        !h.destroyed && h.destroy(timeoutError)
-      })
-
       return await new Promise((rv, rj) => {
         let resolved = false
         let rejected = false
 
+        c.request.on('timeout', () => {
+          !h.destroyed && h.destroy(timeoutError)
+        })
+
+        c.response.on('timeout', () => {
+          !h.destroyed && h.destroy(timeoutError)
+        })
+
+        h.on('timeout', () => {
+          !h.destroyed && h.destroy(timeoutError)
+        })
+
         h.on('close', () => {
-          !resolved && !rejected && (resolved = true) && rv()
+          if (!resolved && !rejected) {
+            resolved = true
+            rv()
+          }
         })
 
         h.on('response', res => {
@@ -501,16 +512,26 @@ class Proxy {
       
           res.on('end', () => {
             c.response.end()
-            !resolved && !rejected && (resolved = true) && rv()
+
+            if (!resolved && !rejected) {
+              resolved = true
+              rv()
+            }
           })
       
-          res.on('error', err => {
-            !resolved && !rejected && (rejected = true) && rj(err)
-          })
+            res.on('error', err => {
+                if (!resolved && !rejected){
+                  rejected = true
+                  rj(err)
+                }
+            })
         })
 
         h.on('error', (err) => {
-          !resolved && !rejected && (rejected = true) && rj(err)
+          if (!resolved && !rejected) {
+            rejected = true
+            rj(err)
+          }
         })
     
         c.request.on('data', chunk => {
@@ -567,7 +588,7 @@ class Proxy {
       pxy.alive = true
 
       res.on('error', err => {
-        //pxy.alive = false
+
       })
 
       res.on('data', chunk => {
