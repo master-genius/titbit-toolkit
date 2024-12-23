@@ -102,6 +102,10 @@ class Http2Pool {
     session.on('close', () => {
       // session关闭时从pool中移除
       this.pool.delete(id)
+
+      if (this.pool.size <= 0) {
+        this.connect()
+      }
     })
 
     session.on('error', (err) => {

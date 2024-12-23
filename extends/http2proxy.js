@@ -282,12 +282,12 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
 
 }
 
-Http2Proxy.prototype.checkAlive = async function (pr) {
+Http2Proxy.prototype.checkAlive = function (pr) {
   if (!pr.h2Pool) return false
-  return pr.h2Pool.aok()
+  return pr.h2Pool.ok()
 }
 
-Http2Proxy.prototype.getBackend = async function (c, host) {
+Http2Proxy.prototype.getBackend = function (c, host) {
   let prlist = this.hostProxy[host][c.routepath]
 
   let pxybalance = this.proxyBalance[host][c.routepath]
@@ -315,14 +315,17 @@ Http2Proxy.prototype.getBackend = async function (c, host) {
     }
   }
 
-  if ( !(await this.checkAlive(pr)) ) {
+  if ( !( this.checkAlive(pr) ) ) {
+    pr.h2Pool && pr.h2Pool.aok()
 
     for (let i = prlist.length - 1; i >= 0 ; i--) {
       
       pr = prlist[i]
 
-      if ( await this.checkAlive(pr) ) {
+      if ( this.checkAlive(pr) ) {
         return pr
+      } else {
+        pr.h2Pool && pr.h2Pool.aok()
       }
     }
 
@@ -366,19 +369,19 @@ Http2Proxy.prototype.mid = function () {
       return await next()
     }
 
-    let pr = await self.getBackend(c, host)
+    let pr = self.getBackend(c, host)
 
     if (!pr) {
-      pr = await self.getBackend(c, host)
+      pr = self.getBackend(c, host)
 
       if (!pr) {
         await c.ext.delay(9)
-        pr = await self.getBackend(c, host)
+        pr = self.getBackend(c, host)
 
         if (!pr) {
           for (let i = 0; i < 200; i++) {
             await c.ext.delay(6 + i)
-            pr = await self.getBackend(c, host)
+            pr = self.getBackend(c, host)
             if (pr) break
           }
         }
