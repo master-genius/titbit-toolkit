@@ -234,6 +234,7 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         debug: this.debug,
         h2Pool: null,
         timeout: this.timeout,
+        alive: false,
         connectOptions: {...this.connectOptions}
       }
 
@@ -245,16 +246,14 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
 
       this.checkAndSetConfig(backend_obj, tmp)
 
-      /* backend_obj.connectOptions.keepalive = true
-      backend_obj.connectOptions.max = backend_obj.max
-      backend_obj.connectOptions.reconnDelay = backend_obj.reconnDelay
-      backend_obj.connectOptions.debug = backend_obj.debug */
-
       backend_obj.h2Pool = new Http2Pool({
         debug: backend_obj.debug,
         max: backend_obj.max,
         url: backend_obj.url,
-        connectOptions: backend_obj.connectOptions
+        connectOptions: backend_obj.connectOptions,
+        parent: backend_obj,
+        reconnDelay: backend_obj.reconnDelay,
+        quiet: true
       })
 
       backend_obj.h2Pool.createPool()
@@ -315,17 +314,17 @@ Http2Proxy.prototype.getBackend = function (c, host) {
     }
   }
 
-  if ( !( this.checkAlive(pr) ) ) {
-    pr.h2Pool && pr.h2Pool.aok()
+  if (!pr.alive) {
+    pr.h2Pool && pr.h2Pool.delayConnect()
 
     for (let i = prlist.length - 1; i >= 0 ; i--) {
       
       pr = prlist[i]
 
-      if ( this.checkAlive(pr) ) {
+      if (pr.alive) {
         return pr
       } else {
-        pr.h2Pool && pr.h2Pool.aok()
+        pr.h2Pool && pr.h2Pool.delayConnect()
       }
     }
 
@@ -418,6 +417,11 @@ Http2Proxy.prototype.mid = function () {
 
       await new Promise(async (rv, rj) => {
         let stm = await hii.request(c.headers)
+        if (!stm) {
+          rj(new Error('request failed'))
+          return false
+        }
+
         let resolved = false
         let rejected = false
         let request_stream = c.stream

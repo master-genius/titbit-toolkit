@@ -31,6 +31,21 @@ class Http2Pool {
       timeout: this.timeout,
       ...options.connectOptions
     }
+
+    this.reconnDelay = 100
+    if (options.reconnDelay !== undefined && !isNaN(options.reconnDelay)) {
+      this.reconnDelay = options.reconnDelay
+    }
+
+    this.parent = null
+
+    if (options.parent && typeof options.parent === 'object') {
+      this.parent = options.parent
+    }
+
+    this.quiet = false
+    if (options.quiet)
+      this.quiet = !!options.quiet
   }
 
   /**
@@ -61,10 +76,15 @@ class Http2Pool {
       await new Promise((resolve, reject) => {
           session.once('connect', () => {
             sessionState.connected = true
+            this.parent && !this.parent.alive && (this.parent.alive = true)
+
             resolve()
           })
-          
+
           session.once('error', err => {
+            if (this.pool.size < 1) {
+              this.parent && (this.parent.alive = false)
+            }
             reject(err)
           })
 
@@ -93,6 +113,19 @@ class Http2Pool {
     }
   }
 
+  delayConnect() {
+    if (this.reconnDelay) {
+      if (!this.delayTimer) {
+        this.delayTimer = setTimeout(() => {
+          this.delayTimer = null
+          this.connect()
+        }, this.reconnDelay)
+      }
+    } else {
+      this.connect()
+    }
+  }
+
   /**
    * 处理session的各种事件
    */
@@ -103,14 +136,17 @@ class Http2Pool {
       // session关闭时从pool中移除
       this.pool.delete(id)
 
-      if (this.pool.size <= 0) {
-        this.connect()
+      if (this.pool.size < 1) {
+        this.delayConnect()
       }
     })
 
     session.on('error', (err) => {
       !session.destroyed && session.destroy()
       this.pool.delete(id)
+      /* if (this.pool.size < 1) {
+        this.parent && (this.parent.alive = false)
+      } */
     })
 
     session.on('frameError', err => {
@@ -155,7 +191,7 @@ class Http2Pool {
    * 创建新的请求stream
    */
   async request(headers, url='') {
-    const sessionState = await this.getSession(url)
+    let sessionState = await this.getSession(url)
     
     // 增加stream计数
     sessionState.streamCount++
@@ -177,7 +213,8 @@ class Http2Pool {
     }
 
     if (!sessionState.connected) {
-      throw new Error('There is no session is connected')
+      if (this.quiet) return null
+      throw new Error('There is no connected')
     }
 
     // 创建请求stream
