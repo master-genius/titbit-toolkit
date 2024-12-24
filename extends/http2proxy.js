@@ -228,14 +228,16 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         rewrite: false,
         weight: 1,
         weightCount: 0,
-        alive: true,
         reconnDelay: 0,
         max: 50,
         debug: this.debug,
         h2Pool: null,
         timeout: this.timeout,
         alive: false,
-        connectOptions: {...this.connectOptions}
+        connectOptions: {
+          timeout: this.timeout,
+          ...this.connectOptions
+        }
       }
 
       if (tmp.connectOptions && typeof tmp.connectOptions === 'object') {
@@ -253,7 +255,8 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         connectOptions: backend_obj.connectOptions,
         parent: backend_obj,
         reconnDelay: backend_obj.reconnDelay,
-        quiet: true
+        quiet: true,
+        timeout: backend_obj.timeout
       })
 
       backend_obj.h2Pool.createPool()
