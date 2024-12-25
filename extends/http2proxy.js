@@ -537,7 +537,7 @@ Http2Proxy.prototype.mid = function () {
         let data_count = 0
         stm.on('data', chunk => {
           data_count++
-          if (data_count >= 99) {
+          if (data_count >= 111) {
             data_count = 0
             timeout_timer && clearTimeout(timeout_timer)
             timeout_timer = setTimeout(timeout_handler, pr.timeout + 5000)
