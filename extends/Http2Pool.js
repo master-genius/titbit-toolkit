@@ -194,11 +194,11 @@ class Http2Pool {
       this.pool.delete(id)
     })
 
-    session.setTimeout(this.timeout + 1000, () => {
-      if (session.destroyed) {
+    session.setTimeout(this.timeout, () => {
+      if (!session.destroyed) {
         session.close()
         queueMicrotask(() => {
-          session.destroy()
+          !session.destroyed && session.destroy()
         })
       }
 
