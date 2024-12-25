@@ -429,8 +429,23 @@ Http2Proxy.prototype.mid = function () {
         let rejected = false
         let request_stream = c.stream
 
+        let timeout_handler = () => {
+          timeout_timer = null
+          if (!resolved && !rejected) {
+            rejected = true
+            try {
+              !stm.closed && stm.close(http2.constants.NGHTTP2_CANCEL)
+              stm.destroy()
+            } catch(e) {}
+            rj(new Error('request timeout'))
+          }
+        }
+
+        let timeout_timer = setTimeout(timeout_handler, pr.timeout + 5000)
+
         c.stream.on('timeout', () => {
           stm.close(http2.constants.NGHTTP2_CANCEL)
+          stm.destroy()
         })
 
         c.stream.on('close', () => {
@@ -441,11 +456,34 @@ Http2Proxy.prototype.mid = function () {
           request_stream = null
         })
 
+        c.stream.on('error', err => {
+          if (timeout_timer) {
+            clearTimeout(timeout_timer)
+            timeout_timer = null
+          }
+
+          stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
+          stm.destroy()
+        })
+
+        c.stream.on('aborted', err => {
+          c.stream.close(http2.constants.NGHTTP2_CANCEL)
+          stm.close(http2.constants.NGHTTP2_CANCEL)
+          stm.destroy()
+        })
+
         stm.setTimeout(pr.timeout, () => {
           stm.close(http2.constants.NGHTTP2_CANCEL)
+          stm.destroy()
         })
 
         stm.on('aborted', err => {
+          stm.destroy()
+          if (timeout_timer) {
+            clearTimeout(timeout_timer)
+            timeout_timer = null
+          }
+
           if (!resolved && !rejected) {
             rejected = true
             rj(err)
@@ -453,6 +491,11 @@ Http2Proxy.prototype.mid = function () {
         })
 
         stm.on('close', () => {
+          if (timeout_timer) {
+            clearTimeout(timeout_timer)
+            timeout_timer = null
+          }
+
           stm.removeAllListeners()
 
           if (stm.rstCode === http2.constants.NGHTTP2_NO_ERROR) {
@@ -469,15 +512,19 @@ Http2Proxy.prototype.mid = function () {
         })
 
         stm.on('response', (headers, flags) => {
+          timeout_timer && clearTimeout(timeout_timer)
+          timeout_timer = setTimeout(timeout_handler, pr.timeout + 5000)
           c.reply && c.reply.writable && c.reply.respond(headers)
         })
 
         stm.on('frameError', err => {
           stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
+          stm.destroy()
         })
 
         stm.on('error', err => {
           stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
+          stm.destroy()
         })
 
         c.request.on('data', chunk => {
@@ -488,11 +535,24 @@ Http2Proxy.prototype.mid = function () {
           stm.end()
         })
 
+        let data_count = 0
         stm.on('data', chunk => {
+          data_count++
+          if (data_count >= 99) {
+            data_count = 0
+            timeout_timer && clearTimeout(timeout_timer)
+            timeout_timer = setTimeout(timeout_handler, pr.timeout + 5000)
+          }
+
           c.reply && c.reply.writable && c.reply.write(chunk)
         })
 
         stm.on('end', () => {
+          if (timeout_timer) {
+            clearTimeout(timeout_timer)
+            timeout_timer = null
+          }
+
           stm.close()
 
           if (!resolved && !rejected) {
