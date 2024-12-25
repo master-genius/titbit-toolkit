@@ -452,8 +452,6 @@ Http2Proxy.prototype.mid = function () {
           if (request_stream && request_stream.rstCode !== http2.constants.NGHTTP2_NO_ERROR) {
             stm.close(request_stream.rstCode)
           }
-
-          request_stream = null
         })
 
         c.stream.on('error', err => {
@@ -467,7 +465,7 @@ Http2Proxy.prototype.mid = function () {
         })
 
         c.stream.on('aborted', err => {
-          c.stream.close(http2.constants.NGHTTP2_CANCEL)
+          !request_stream.destroyed && request_stream.destroy()
           stm.close(http2.constants.NGHTTP2_CANCEL)
           stm.destroy()
         })
@@ -478,7 +476,8 @@ Http2Proxy.prototype.mid = function () {
         })
 
         stm.on('aborted', err => {
-          stm.destroy()
+          !stm.destroyed && stm.destroy()
+
           if (timeout_timer) {
             clearTimeout(timeout_timer)
             timeout_timer = null
