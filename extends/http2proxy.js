@@ -73,7 +73,8 @@ let Http2Proxy = function (options = {}) {
   //是否启用全代理模式。
   this.full = false
 
-  this.timeout = 10000
+  this.timeout = 30000
+  this.connectTimeout = 15000
 
   this.starPath = false
 
@@ -98,11 +99,17 @@ let Http2Proxy = function (options = {}) {
         break
 
       case 'maxBody':
-      case 'addIP':
       case 'timeout':
+      case 'connectTimeout':
+        if (typeof options[k] === 'number' && !isNaN(options[k])) {
+          this[k] = options[k]
+        }
+        break
+
+      case 'addIP':
       case 'full':
       case 'debug':
-        this[k] = options[k]
+        this[k] = !!options[k]
         break
 
       case 'connectOptions':
@@ -195,6 +202,11 @@ Http2Proxy.prototype.checkAndSetConfig = function (backend_obj, tmp) {
   if (tmp.rewrite && typeof tmp.rewrite === 'function')
     backend_obj.rewrite = tmp.rewrite
 
+  if (tmp.connectTimeout && typeof tmp.connectTimeout === 'number' && !isNaN(tmp.connectTimeout))
+  {
+    backend_obj.connectTimeout = tmp.connectTimeout
+  }
+
 }
 
 Http2Proxy.prototype.setHostProxy = function (cfg) {
@@ -233,6 +245,7 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         debug: this.debug,
         h2Pool: null,
         timeout: this.timeout,
+        connectTimeout: this.connectTimeout,
         alive: false,
         connectOptions: {
           timeout: this.timeout,
@@ -256,7 +269,8 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         parent: backend_obj,
         reconnDelay: backend_obj.reconnDelay,
         quiet: true,
-        timeout: backend_obj.timeout
+        timeout: backend_obj.timeout,
+        connectTimeout: backend_obj.connectTimeout
       })
 
       backend_obj.h2Pool.createPool()

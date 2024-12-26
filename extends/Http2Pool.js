@@ -18,6 +18,8 @@ class Http2Pool {
                         : 100000000
 
     this.timeout = options.timeout || 30000
+    this.connectTimeout = options.connectTimeout || 15000
+
     this.max = (options.max && !isNaN(options.max) && options.max > 0) ? options.max : 50
     this.poolMax = parseInt(this.max * 1.5 + 0.5)
 
@@ -124,7 +126,7 @@ class Http2Pool {
               timeout_timer = null
               !session.destroyed && session.destroy()
               !rejected && (rejected = true) && reject(new Error('connect timeout'))
-            }, this.timeout + 100)
+            }, this.connectTimeout)
           }
       })
     } catch (err) {
