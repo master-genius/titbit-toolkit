@@ -76,6 +76,8 @@ let Http2Proxy = function (options = {}) {
   this.timeout = 30000
   this.connectTimeout = 15000
 
+  this.maxAliveStreams = 100
+
   this.starPath = false
 
   this.addIP = false
@@ -101,6 +103,7 @@ let Http2Proxy = function (options = {}) {
       case 'maxBody':
       case 'timeout':
       case 'connectTimeout':
+      case 'maxAliveStreams':
         if (typeof options[k] === 'number' && !isNaN(options[k])) {
           this[k] = options[k]
         }
@@ -246,6 +249,7 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         h2Pool: null,
         timeout: this.timeout,
         connectTimeout: this.connectTimeout,
+        maxAliveStreams: this.maxAliveStreams,
         alive: false,
         connectOptions: {
           timeout: this.timeout,
@@ -270,7 +274,8 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         reconnDelay: backend_obj.reconnDelay,
         quiet: true,
         timeout: backend_obj.timeout,
-        connectTimeout: backend_obj.connectTimeout
+        connectTimeout: backend_obj.connectTimeout,
+        maxAliveStreams: backend_obj.maxAliveStreams
       })
 
       backend_obj.h2Pool.createPool()
@@ -413,6 +418,7 @@ Http2Proxy.prototype.mid = function () {
     }
 
     let hii = pr.h2Pool
+    let session_client
 
     try {
       if (pr.headers) {
@@ -432,28 +438,44 @@ Http2Proxy.prototype.mid = function () {
         }
       }
 
+      session_client = await hii.getSession()
+
       await new Promise(async (rv, rj) => {
-        let stm = await hii.request(c.headers)
+        let resolved = false
+        let rejected = false
+        let request_stream = c.stream
+        let stm = null
+        
+        stm = await hii.request(c.headers, session_client)
+                          .catch(err => {
+                            rejected = true
+                            rj(err)
+                            stm = null
+                          })
+
         if (!stm) {
           rj(new Error('request failed'))
           return false
         }
 
-        let resolved = false
-        let rejected = false
-        let request_stream = c.stream
-
         let timeout_handler = () => {
           timeout_timer = null
+
           if (!resolved && !rejected) {
             rejected = true
+            //强制的异常结束，这意味着session的其他stream也会出现问题。
             try {
               !stm.closed && stm.close(http2.constants.NGHTTP2_CANCEL)
               stm.destroy()
+              if (session_client.session && !session_client.session.destroyed) {
+                session_client.session.destroy()
+              }
             } catch(e) {}
-            rj(new Error('request timeout'))
+            rj(new Error('force destroy stream, request timeout'))
           }
         }
+
+        session_client.aliveStreams++
 
         let timeout_timer = setTimeout(timeout_handler, pr.timeout + 5000)
 
@@ -486,16 +508,16 @@ Http2Proxy.prototype.mid = function () {
 
         stm.setTimeout(pr.timeout, () => {
           stm.close(http2.constants.NGHTTP2_CANCEL)
-          stm.destroy()
+          //stm.destroy()
         })
 
         stm.on('aborted', err => {
-          !stm.destroyed && stm.destroy()
-
           if (timeout_timer) {
             clearTimeout(timeout_timer)
             timeout_timer = null
           }
+
+          !stm.destroyed && stm.destroy()
 
           if (!resolved && !rejected) {
             rejected = true
@@ -522,6 +544,8 @@ Http2Proxy.prototype.mid = function () {
               rj()
             }
           }
+
+          session_client.aliveStreams--
         })
 
         stm.on('response', (headers, flags) => {
@@ -536,8 +560,9 @@ Http2Proxy.prototype.mid = function () {
         })
 
         stm.on('error', err => {
+          self.debug && console.error('------ error ------',err)
           stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
-          stm.destroy()
+          //stm.destroy()
         })
 
         c.request.on('data', chunk => {
@@ -551,13 +576,13 @@ Http2Proxy.prototype.mid = function () {
         let data_count = 0
         stm.on('data', chunk => {
           data_count++
+          c.reply && c.reply.writable && c.reply.write(chunk)
+
           if (data_count >= 111) {
             data_count = 0
             timeout_timer && clearTimeout(timeout_timer)
             timeout_timer = setTimeout(timeout_handler, pr.timeout + 5000)
           }
-
-          c.reply && c.reply.writable && c.reply.write(chunk)
         })
 
         stm.on('end', () => {
@@ -576,8 +601,10 @@ Http2Proxy.prototype.mid = function () {
 
       })
     } catch (err) {
-      self.debug && console.error(err)
+      self.debug && console.error(err||'request null error')
       c.status(503).send(error_503_text)
+    } finally {
+      session_client = null
     }
 
   }

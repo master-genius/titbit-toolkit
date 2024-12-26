@@ -12,10 +12,11 @@ class Http2Pool {
 
     this.pool = new Map()
     
+    this.reconnecting = false
     // 配置项
     this.maxStreamId = !isNaN(options.maxStreamId) && options.maxStreamId > 1
                         ? options.maxStreamId
-                        : 100000000
+                        : 90000
 
     this.timeout = options.timeout || 30000
     this.connectTimeout = options.connectTimeout || 15000
@@ -45,6 +46,8 @@ class Http2Pool {
       this.parent = options.parent
     }
 
+    this.maxAliveStreams = options.maxAliveStreams || 100
+
     this.quiet = false
     if (options.quiet)
       this.quiet = !!options.quiet
@@ -53,21 +56,22 @@ class Http2Pool {
   /**
    * 创建新的session连接
    */
-  async connect(url='') {
-    let real_url = url || this.url
-    const session = http2.connect(real_url, this.connectOptions)
+  async connect() {
+    const session = http2.connect(this.url, this.connectOptions)
 
     // 生成唯一session id
     const sessionId = crypto.randomBytes(16).toString('hex')
     
     // 初始化session相关计数器和状态
     const sessionState = {
+      using: false,
       id: sessionId,
       session,
       streamCount: 0,
-      url: real_url,
+      url: this.url,
       connected: false,
-      error: null
+      error: null,
+      aliveStreams: 0
     }
 
     // 处理session事件
@@ -110,7 +114,8 @@ class Http2Pool {
               clearTimeout(timeout_timer)
               timeout_timer = null
             }
-            !rejected && (rejected = true) && reject(err)
+
+            !rejected && (rejected = true) && reject(err||new Error('goaway'))
           })
 
           session.once('frameError', err => {
@@ -133,6 +138,8 @@ class Http2Pool {
       sessionState.error = err
       sessionState.session = null
       this.debug && console.error(err)
+    } finally {
+      this.reconnecting = false
     }
 
     if (this.pool.size < this.poolMax && sessionState.connected) {
@@ -142,23 +149,27 @@ class Http2Pool {
     return sessionState
   }
 
-  createPool(url='', max=0) {
+  createPool(max=0) {
     if (max <= 0) max = this.max
 
     for (let i = 0; i < max; i++) {
-      this.connect(url)
+      this.connect()
     }
   }
 
   delayConnect() {
+    if (this.reconnecting) return false
+
     if (this.reconnDelay) {
       if (!this.delayTimer) {
+        this.reconnecting = true
         this.delayTimer = setTimeout(() => {
           this.delayTimer = null
           this.connect()
         }, this.reconnDelay)
       }
     } else {
+      this.reconnecting = true
       this.connect()
     }
   }
@@ -178,12 +189,10 @@ class Http2Pool {
       }
     })
 
-    session.on('error', (err) => {
+    session.on('error', err => {
+      this.debug && console.error(err)
       !session.destroyed && session.destroy()
       this.pool.delete(id)
-      /* if (this.pool.size < 1) {
-        this.parent && (this.parent.alive = false)
-      } */
     })
 
     session.on('frameError', err => {
@@ -191,17 +200,18 @@ class Http2Pool {
       this.pool.delete(id)
     })
 
-    session.on('goaway', () => {
+    session.on('goaway', err => {
+      this.debug && err && console.log('..........goaway........', err)
+
       !session.destroyed && session.close()
       this.pool.delete(id)
     })
 
     session.setTimeout(this.timeout, () => {
+      this.debug && console.error('session.....time.....out......')
       if (!session.destroyed) {
         session.close()
-        queueMicrotask(() => {
-          !session.destroyed && session.destroy()
-        })
+        !session.destroyed && session.destroy()
       }
 
       this.pool.delete(id)
@@ -211,56 +221,42 @@ class Http2Pool {
   /**
    * 获取可用的session,如果没有则创建新的
    */
-  async getSession(url='') {
-    let real_url = url || this.url
-    // 遍历查找可用的session
+  async getSession() {
     if (this.pool.size > 0) {
-      let items = this.pool.entries()
-      for (const [id, state] of items) {
-        if (state.url === real_url && 
-            state.connected && 
-            state.streamCount < this.maxStreamId)
-        {
-          return state
+        let items = this.pool.entries()
+        for (const [id, state] of items) {
+          if (state.connected && state.streamCount < this.maxStreamId) {
+            if (state.aliveStreams < this.maxAliveStreams) {
+              return state
+            }
+          } else {
+            state.connected = false
+            if (!state.session.destroyed) {
+              state.session.close()
+            }
+
+            this.pool.delete(state.id)
+          }
         }
-      }
     }
 
-    // 没有可用session则创建新的
-    return this.connect(url)
+    return this.connect()
   }
 
   /**
    * 创建新的请求stream
    */
-  async request(headers, url='') {
-    let sessionState = await this.getSession(url)
-    
-    // 增加stream计数
+  async request(headers, sessionState=null) {
+    !sessionState && (sessionState = await this.getSession())
+
     sessionState.streamCount++
-    
-    // 检查是否超过最大限制
-    if (sessionState.streamCount >= this.maxStreamId) {
-      // 关闭并移除该session
-      this.pool.delete(sessionState.id)
-
-      if (!sessionState.session.destroyed) {
-        sessionState.session.close()
-        sessionState.connected = false
-      }
-    }
-
-    if (!sessionState.connected) {
-      let real_url = url || (sessionState.url === this.url ? '' : sessionState.url)
-      sessionState = await this.connect(real_url)
-    }
 
     if (!sessionState.connected) {
       if (this.quiet) return null
       throw new Error('There is no connected')
     }
 
-    // 创建请求stream
+    //创建请求stream
     return sessionState.session.request(headers)
   }
 
@@ -273,6 +269,7 @@ class Http2Pool {
         state.session.close()
       }
     }
+
     this.pool.clear()
   }
 
@@ -308,7 +305,6 @@ class Http2Pool {
     for (const [id, state] of items) {
       status.sessions.push({
         id: state.id,
-        url: state.url,
         streamCount: state.streamCount,
         connected: state.connected
       })
