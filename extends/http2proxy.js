@@ -481,7 +481,7 @@ Http2Proxy.prototype.mid = function () {
 
         c.stream.on('timeout', () => {
           stm.close(http2.constants.NGHTTP2_CANCEL)
-          stm.destroy()
+          //stm.destroy()
         })
 
         c.stream.on('close', () => {
@@ -502,13 +502,13 @@ Http2Proxy.prototype.mid = function () {
 
         c.stream.on('aborted', err => {
           !request_stream.destroyed && request_stream.destroy()
-          stm.close(http2.constants.NGHTTP2_CANCEL)
+          //stm.close(http2.constants.NGHTTP2_CANCEL)
           stm.destroy()
         })
 
         stm.setTimeout(pr.timeout, () => {
-          stm.close(http2.constants.NGHTTP2_CANCEL)
-          //stm.destroy()
+          //stm.close(http2.constants.NGHTTP2_CANCEL)
+          stm.destroy()
         })
 
         stm.on('aborted', err => {
@@ -541,7 +541,7 @@ Http2Proxy.prototype.mid = function () {
           } else {
             if (!resolved && !rejected) {
               rejected = true
-              rj()
+              rj(new Error(`stream close, exit code ${stm.rstCode}`))
             }
           }
 
@@ -561,8 +561,8 @@ Http2Proxy.prototype.mid = function () {
 
         stm.on('error', err => {
           self.debug && console.error('------ error ------',err)
-          stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
-          //stm.destroy()
+          //stm.close(http2.constants.NGHTTP2_INTERNAL_ERROR)
+          stm.destroy(err)
         })
 
         c.request.on('data', chunk => {

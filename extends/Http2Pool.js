@@ -201,7 +201,7 @@ class Http2Pool {
     })
 
     session.on('goaway', err => {
-      this.debug && err && console.log('..........goaway........', err)
+      this.debug && err && console.error('..........goaway........', err)
 
       !session.destroyed && session.close()
       this.pool.delete(id)
@@ -210,8 +210,7 @@ class Http2Pool {
     session.setTimeout(this.timeout, () => {
       this.debug && console.error('session.....time.....out......')
       if (!session.destroyed) {
-        session.close()
-        !session.destroyed && session.destroy()
+        session.destroy()
       }
 
       this.pool.delete(id)
