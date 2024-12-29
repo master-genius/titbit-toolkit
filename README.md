@@ -559,6 +559,63 @@ weight无法做到十分精确的控制，可以维持一个大概的比例，�
 
 如果在数组中，同一个host下的多个路径，/开头是会覆盖其他路径的，这时候如果要同时启用 /xyz 和 / ，则需要把path为 /xyz的配置放在前面。
 
+## http2反向代理：Http2Proxy
+
+```javascript
+
+'use strict'
+
+const Titbit = require('titbit')
+const {Http2Proxy} = require('titbit-toolkit')
+
+const app = new Titbit({
+  debug: true,
+  http2: true,
+  key : './rsa/localhost.key',
+  cert : './rsa/localhost.cert',
+  timeout: 30000,
+  logType: 'stdio',
+  //globalLog: true
+})
+
+let hxy = new Http2Proxy({
+  config: {
+    'a.com' : [
+      {
+        url: 'http://localhost:3001',
+        weight: 10,
+        path : '/',
+        reconnDelay: 200,
+        max: 2,
+        headers: {
+          'x-test-key': `${Date.now()}-${Math.random()}`
+        },
+        connectTimeout: 2000
+      },
+
+      {
+        url: 'http://localhost:3002',
+        weight: 4,
+        path : '/',
+        max: 2,
+        reconnDelay: 100,
+        headers: {
+          'x-test-key2': `${Date.now()}-${Math.random()}`
+        }
+      }
+    ]
+  },
+  
+  debug: true
+})
+
+hxy.init(app)
+
+app.run(args.port)
+
+```
+
+http2的反向代理参数基本和proxy扩展一致，只是保活检测是利用http2的连接超时之后的自动重连机制，不必进行定时器请求检测。
 
 ## mixlogger(混合日志)
 
