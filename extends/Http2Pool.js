@@ -202,7 +202,6 @@ class Http2Pool {
 
     session.on('goaway', err => {
       this.debug && err && console.error('..........goaway........', err)
-
       !session.destroyed && session.close()
       this.pool.delete(id)
     })
@@ -217,6 +216,14 @@ class Http2Pool {
     })
   }
 
+  isSessionHealthy(session) {
+    return session
+            && !session.destroyed
+            && !session.closed
+            && session.socket
+            && !session.socket.destroyed
+  }
+
   /**
    * 获取可用的session,如果没有则创建新的
    */
@@ -224,7 +231,10 @@ class Http2Pool {
     if (this.pool.size > 0) {
         let items = this.pool.entries()
         for (const [id, state] of items) {
-          if (state.connected && state.streamCount < this.maxStreamId) {
+          if (state.connected
+              && state.streamCount < this.maxStreamId
+              && this.isSessionHealthy(state.session))
+          {
             if (state.aliveStreams < this.maxAliveStreams) {
               return state
             }
@@ -232,6 +242,17 @@ class Http2Pool {
             state.connected = false
             if (!state.session.destroyed) {
               state.session.close()
+
+              if (state.aliveStreams < 1) {
+                state.session.destroy()
+              }
+              /*  else {
+                let sess = state.session
+                setTimeout(() => {
+                  !sess.destroyed && sess.destroy()
+                  sess = null
+                }, this.timeout + 5000)
+              } */
             }
 
             this.pool.delete(state.id)
