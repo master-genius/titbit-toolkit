@@ -23,6 +23,9 @@ class Http2Pool {
 
     this.max = (options.max && !isNaN(options.max) && options.max > 0) ? options.max : 50
     this.poolMax = parseInt(this.max * 1.5 + 0.5)
+    this.maxConnect = (options.maxConnect && !isNaN(options.maxConnect) && options.maxConnect > 0)
+                      ? options.maxConnect
+                      : this.poolMax + 500
 
     this.url = options.url || ''
     this.debug = options.debug || false
@@ -57,6 +60,13 @@ class Http2Pool {
    * 创建新的session连接
    */
   async connect() {
+    if (this.pool.size > this.maxConnect) {
+      return {
+        deny: true,
+        error: `超出最大连接限制：${this.maxConnect}`
+      }
+    }
+
     const session = http2.connect(this.url, this.connectOptions)
 
     // 生成唯一session id
