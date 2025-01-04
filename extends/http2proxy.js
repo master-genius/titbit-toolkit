@@ -474,16 +474,17 @@ Http2Proxy.prototype.mid = function () {
         let timeout_handler = () => {
           timeout_timer = null
 
+          //强制的异常结束，这意味着session的其他stream也会出现问题。
+          try {
+            !stm.closed && stm.close(http2.constants.NGHTTP2_CANCEL)
+            stm.destroy()
+            if (session_client.session && !session_client.session.destroyed) {
+              session_client.session.destroy()
+            }
+          } catch(e) {}
+
           if (!resolved && !rejected) {
             rejected = true
-            //强制的异常结束，这意味着session的其他stream也会出现问题。
-            try {
-              !stm.closed && stm.close(http2.constants.NGHTTP2_CANCEL)
-              stm.destroy()
-              if (session_client.session && !session_client.session.destroyed) {
-                session_client.session.destroy()
-              }
-            } catch(e) {}
             rj(new Error('force destroy stream, request timeout'))
           }
         }
