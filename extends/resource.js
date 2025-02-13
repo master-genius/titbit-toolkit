@@ -35,6 +35,7 @@ let _typemap = {
   '.mp4'  : 'video/mp4',
   '.webm' : 'video/webm',
 
+  '.otf'  : 'font/otf',
   '.ttf'  : 'font/ttf',
   '.wtf'  : 'font/wtf',
   '.woff' : 'font/woff',
