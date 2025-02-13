@@ -243,7 +243,7 @@ Http2Proxy.prototype.setHostProxy = function (cfg) {
         rewrite: false,
         weight: 1,
         weightCount: 0,
-        reconnDelay: 0,
+        reconnDelay: 500,
         max: 50,
         maxConnect: tmp.maxConnect || 0,
         debug: this.debug,
